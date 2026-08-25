@@ -108,3 +108,43 @@ def test_conflicts_nonexistent_path_exits_two() -> None:
 def test_conflicts_no_skills_found_exits_two(tmp_path: Path) -> None:
     result = runner.invoke(app, ["conflicts", str(tmp_path)])
     assert result.exit_code == 2
+
+
+def test_conflicts_against_nonexistent_path_exits_two(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["conflicts", str(EXAMPLES / "good-skill"), "--against", str(tmp_path / "nope")],
+    )
+    assert result.exit_code == 2
+
+
+def test_conflicts_against_flag_scopes_to_target(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "SKILL.md").write_text(
+        "---\nname: good-skill\ndescription: Use this skill when doing the target thing.\n---\n"
+    )
+    result = runner.invoke(
+        app,
+        [
+            "conflicts",
+            str(target),
+            "--against",
+            str(EXAMPLES / "conflicting-skills"),
+            "--format",
+            "json",
+        ],
+    )
+    payload = json.loads(result.stdout)
+    assert payload["skills_scanned"] == 1
+
+
+def test_malformed_config_exits_two(tmp_path: Path) -> None:
+    (tmp_path / "skillseal.toml").write_text("[thresholds\nbroken\n")
+    skill_dir = tmp_path / "my-skill"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: my-skill\ndescription: Use this skill when doing things.\n---\n"
+    )
+    result = runner.invoke(app, ["check", str(skill_dir)])
+    assert result.exit_code == 2
