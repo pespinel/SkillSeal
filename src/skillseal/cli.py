@@ -63,13 +63,20 @@ def check(
     fail_on: Annotated[
         FailOn, typer.Option(help="Minimum severity that fails the gate.")
     ] = FailOn.ERROR,
+    ignore: Annotated[
+        list[str],
+        typer.Option(
+            "--ignore",
+            help="Suppress findings whose id starts with PREFIX. Repeatable.",
+        ),
+    ] = [],  # noqa: B006 - typer reads this as the option's default, not a mutated shared list
 ) -> None:
     """Lint SKILL.md files: specification, quality, security, and portability."""
     if not path.exists():
         err_console.print(f"[red]Error:[/red] path not found: {path}")
         raise typer.Exit(code=2)
 
-    reports = lint_path(path)
+    reports = lint_path(path, ignore_prefixes=ignore)
     if not reports:
         err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {path}")
         raise typer.Exit(code=2)

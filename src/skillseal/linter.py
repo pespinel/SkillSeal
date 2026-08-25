@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from skillseal.models import Skill, SkillReport
@@ -12,10 +13,12 @@ from skillseal.scoring import build_report
 _RULES = build_registry()
 
 
-def lint_skill(skill: Skill) -> SkillReport:
+def lint_skill(skill: Skill, ignore_prefixes: Sequence[str] = ()) -> SkillReport:
     findings = [finding for rule in _RULES for finding in rule.check(skill)]
+    if ignore_prefixes:
+        findings = [f for f in findings if not any(f.id.startswith(p) for p in ignore_prefixes)]
     return build_report(skill, findings)
 
 
-def lint_path(path: Path) -> list[SkillReport]:
-    return [lint_skill(parse_skill(p)) for p in discover_skills(path)]
+def lint_path(path: Path, ignore_prefixes: Sequence[str] = ()) -> list[SkillReport]:
+    return [lint_skill(parse_skill(p), ignore_prefixes) for p in discover_skills(path)]

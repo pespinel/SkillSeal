@@ -35,6 +35,16 @@ def test_check_path_with_no_skills_exits_two(tmp_path: Path) -> None:
     assert result.exit_code == 2
 
 
+def test_check_ignore_prefix_suppresses_matching_findings() -> None:
+    result = runner.invoke(
+        app,
+        ["check", str(EXAMPLES / "bad-skill"), "--format", "json", "--ignore", "rm-rf"],
+    )
+    payload = json.loads(result.stdout)
+    ids = {f["id"] for f in payload["skills"][0]["findings"]}
+    assert "rm-rf" not in ids
+
+
 def test_check_json_format_is_valid_json() -> None:
     result = runner.invoke(app, ["check", str(EXAMPLES / "good-skill"), "--format", "json"])
     payload = json.loads(result.stdout)
