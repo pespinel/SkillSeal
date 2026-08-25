@@ -75,9 +75,12 @@ skipped, not failed.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--threshold <float>` | `0.9` | Minimum accuracy per skill to pass the gate. |
+| `--threshold <float>` | `0.9`\* | Minimum accuracy per skill to pass the gate. |
 | `--format terminal\|json` | `terminal` | Output format. |
 | `--provider heuristic\|llm` | `heuristic` | Evaluator to use (see below). |
+
+\* Or whatever `routing_threshold` is set to in `skillseal.toml` — see
+[Configuration](#skillsealtoml-format) below.
 
 ### `skillseal conflicts <path>`
 
@@ -93,8 +96,37 @@ flags two things `check`/`test` can't see in isolation:
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--threshold <float>` | `0.5` | Minimum vocabulary similarity (Jaccard) to flag as overlap. |
+| `--threshold <float>` | `0.5`\* | Minimum vocabulary similarity (Jaccard) to flag as overlap. |
+| `--against <path>` | none | Check `path` against this broader corpus instead of all-pairs within `path`. |
 | `--format terminal\|json` | `terminal` | Output format. |
+
+\* Or `conflict_threshold` in `skillseal.toml` — see
+[Configuration](#skillsealtoml-format) below.
+
+Without `--against`, every skill under `path` is compared against every
+other. With it, only pairs involving at least one skill from `path` are
+considered — the PR-gate use case: "does the skill I just added or changed
+conflict with anything in the existing repo?" without re-auditing the whole
+existing corpus against itself on every run:
+
+```bash
+skillseal conflicts ./skills/my-new-skill --against ./skills
+```
+
+A skill can opt specific others out of routing-overlap comparison — useful
+for deliberately similar variants — via `conflict_ignore` in its frontmatter
+(matched by name or by a path substring; this only suppresses the routing-
+overlap check, not duplicate-name detection, since a real name collision is
+rarely something you actually want to allow):
+
+```yaml
+---
+name: my-skill
+description: Use this when ...
+conflict_ignore:
+  - legacy-skill
+---
+```
 
 ```
 $ uv run skillseal conflicts examples/conflicting-skills
@@ -211,6 +243,32 @@ routing:
   false pass or divide-by-zero).
 - Malformed YAML is a usage error (exit `2`), not a crash.
 
+## `skillseal.toml` format
+
+Optional. Overrides a curated set of thresholds repo-wide, without forking a
+rule. Discovered by searching upward from the scanned path to the filesystem
+root (so one file at your repo root applies everywhere):
+
+```toml
+[thresholds]
+min_description_length = 20     # default: 10
+token_warn_threshold = 3000     # default: 5000
+max_lines = 300                 # default: 500
+long_section_word_threshold = 1000  # default: 800
+max_top_level_sections = 10     # default: 8
+conflict_threshold = 0.6        # default: 0.5 — see `conflicts` above
+routing_threshold = 0.85        # default: 0.9 — see `test` above
+```
+
+- Any threshold you omit keeps its default. An explicit `--threshold` on
+  `test`/`conflicts` still overrides whatever `skillseal.toml` sets.
+- An unrecognized key, or malformed TOML, is a usage error (exit `2`), not a
+  silent no-op.
+- Deliberately **not** configurable: the numeric limits that come straight
+  from the agentskills.io spec (`name` ≤64 chars, `description` ≤1024,
+  `compatibility` ≤500) — overriding those would mean `check` no longer
+  validates spec compliance, just a private opinion.
+
 ## Using it in CI
 
 As a reusable GitHub Action ([`action.yml`](action.yml)):
@@ -302,7 +360,8 @@ src/skillseal/
 ├── parser.py            # discover_skills(), parse_skill() — never raises on bad YAML
 ├── linter.py             # ties parser + rules + scoring together
 ├── scoring.py             # deterministic 0-100 scoring
-├── conflicts.py            # cross-skill: duplicate names, routing-overlap (Jaccard)
+├── config.py               # skillseal.toml: threshold overrides
+├── conflicts.py              # cross-skill: duplicate names, routing-overlap (Jaccard)
 ├── rules/
 │   ├── base.py             # Rule protocol, FuncRule, registry, text helpers
 │   ├── metadata.py          # SPECIFICATION rules
@@ -350,11 +409,6 @@ implementations:
   etc.) — see the roadmap.
 
 ## Roadmap
-
-Near-term, likely next:
-
-- A config file (`skillseal.toml`) to override thresholds (size, description
-  length, etc.) without forking a rule
 
 Documented, not implemented, on purpose — deliberately out of scope for now:
 
