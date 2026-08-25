@@ -180,7 +180,7 @@ routing:
 As a reusable GitHub Action ([`action.yml`](action.yml)):
 
 ```yaml
-- uses: pespinel/skillseal@v0.2.0
+- uses: pespinel/skillseal@v0.2.1
   with:
     path: ./skills
     fail-on: error
@@ -206,7 +206,7 @@ the same against `examples/`, plus lint/type-check/unit tests.
 ```yaml
 repos:
   - repo: https://github.com/pespinel/skillseal
-    rev: v0.2.0
+    rev: v0.2.1
     hooks:
       - id: skillseal
 ```
