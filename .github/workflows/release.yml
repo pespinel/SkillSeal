@@ -77,6 +77,21 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
+      # Full history + tags, needed to diff commits since the previous
+      # release. `--generate-notes` summarizes merged PRs, which this repo
+      # doesn't use (commits land on main directly) — it silently produced
+      # an empty changelog. Commit subjects are already Conventional Commits,
+      # so the log itself is the changelog.
+      #
+      # Must run BEFORE "Download dist": actions/checkout wipes untracked
+      # files in the workspace, which would delete an already-downloaded
+      # dist/ and fail "gh release create ... dist/*" with a glob miss.
+      - name: Checkout full history for changelog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
       - name: Download dist
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -85,17 +100,6 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
-
-      # Full history + tags, needed to diff commits since the previous
-      # release. `--generate-notes` summarizes merged PRs, which this repo
-      # doesn't use (commits land on main directly) — it silently produced
-      # an empty changelog. Commit subjects are already Conventional Commits,
-      # so the log itself is the changelog.
-      - name: Checkout full history for changelog
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ env.RELEASE_TAG }}
-          fetch-depth: 0
 
       - name: Create GitHub Release
         env:
