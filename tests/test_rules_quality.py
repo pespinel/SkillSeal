@@ -14,8 +14,13 @@ def test_clean_skill_has_no_findings(make_skill) -> None:
 
 
 def test_skill_too_large(make_skill) -> None:
-    skill = make_skill(body="word " * 3000)
+    skill = make_skill(body="word " * 6000)
     assert "skill-too-large" in _run(skill)
+
+
+def test_too_many_lines(make_skill) -> None:
+    skill = make_skill(body="\n".join(f"line {i}" for i in range(600)))
+    assert "too-many-lines" in _run(skill)
 
 
 def test_repeated_instruction_lines(make_skill) -> None:

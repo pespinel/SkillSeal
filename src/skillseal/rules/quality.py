@@ -15,7 +15,10 @@ from skillseal.rules.base import (
     split_sections,
 )
 
-_TOKEN_WARN_THRESHOLD = 2000
+# agentskills.io recommends the SKILL.md body stay under 5000 tokens / 500 lines
+# ("Instructions (<5000 tokens recommended)... Keep your main SKILL.md under 500 lines.")
+_TOKEN_WARN_THRESHOLD = 5000
+_MAX_LINES = 500
 _LONG_SECTION_WORD_THRESHOLD = 800
 _MAX_TOP_LEVEL_SECTIONS = 8
 _MIN_REPEATED_LINE_LEN = 15
@@ -45,8 +48,21 @@ def _skill_too_large(skill: Skill) -> list[Draft]:
         return []
     return [
         Draft(
-            message="SKILL.md is large enough to add significant context overhead.",
+            message="SKILL.md exceeds the recommended body size (agentskills.io: <5000 tokens).",
             detail=f"~{tokens:,} estimated tokens (threshold: {_TOKEN_WARN_THRESHOLD:,})",
+        )
+    ]
+
+
+def _too_many_lines(skill: Skill) -> list[Draft]:
+    line_count = skill.raw_text.count("\n") + 1
+    if line_count <= _MAX_LINES:
+        return []
+    return [
+        Draft(
+            message="SKILL.md exceeds the recommended line count (agentskills.io: "
+            "under 500 lines) — consider moving detail to a references/ file.",
+            detail=f"{line_count} lines (threshold: {_MAX_LINES})",
         )
     ]
 
@@ -144,6 +160,13 @@ RULES: list[Rule] = [
         severity=Severity.WARNING,
         description="SKILL.md should stay under a reasonable size budget.",
         fn=_skill_too_large,
+    ),
+    FuncRule(
+        id="too-many-lines",
+        category=Category.QUALITY,
+        severity=Severity.WARNING,
+        description="SKILL.md should stay under the recommended line count.",
+        fn=_too_many_lines,
     ),
     FuncRule(
         id="repeated-instructions",
