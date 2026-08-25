@@ -16,6 +16,7 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
+from skillseal import __version__
 from skillseal.config import Config, ConfigError, load_config
 from skillseal.conflicts import find_conflicts
 from skillseal.diff import DiffTargetError, diff_skills
@@ -44,6 +45,27 @@ from skillseal.routing.runner import RoutingConfigError, run_routing_tests_for_p
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
 err_console = Console(stderr=True)
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        console.print(f"skillseal {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show the version and exit.",
+        ),
+    ] = False,
+) -> None:
+    """SkillSeal: lint, score, and routing-test Agent Skills (SKILL.md)."""
 
 
 class OutputFormat(StrEnum):

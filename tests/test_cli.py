@@ -182,3 +182,20 @@ def test_diff_target_with_multiple_skills_exits_two() -> None:
         app, ["diff", str(EXAMPLES / "conflicting-skills"), str(EXAMPLES / "good-skill")]
     )
     assert result.exit_code == 2
+
+
+def test_version_flag() -> None:
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert "skillseal" in result.stdout
+    assert result.stdout.strip() != "skillseal 0.1.0"  # the old hardcoded value
+
+
+def test_version_matches_pyproject() -> None:
+    import tomllib
+    from pathlib import Path
+
+    from skillseal import __version__
+
+    pyproject = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text())
+    assert __version__ == pyproject["project"]["version"]
