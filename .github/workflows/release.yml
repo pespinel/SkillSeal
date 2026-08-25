@@ -86,12 +86,29 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
 
+      # Full history + tags, needed to diff commits since the previous
+      # release. `--generate-notes` summarizes merged PRs, which this repo
+      # doesn't use (commits land on main directly) — it silently produced
+      # an empty changelog. Commit subjects are already Conventional Commits,
+      # so the log itself is the changelog.
+      - name: Checkout full history for changelog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          prev_tag=$(git tag --sort=-v:refname | grep -Fxv "$RELEASE_TAG" | head -1)
+          range="${prev_tag:+${prev_tag}..}${RELEASE_TAG}"
+          notes=$(git log "$range" --no-merges --pretty=format:'- %s' | grep -v '^- chore(release):' || true)
+          if [ -n "$prev_tag" ]; then
+            notes="${notes}"$'\n\n'"**Full Changelog**: https://github.com/${{ github.repository }}/compare/${prev_tag}...${RELEASE_TAG}"
+          fi
           gh release create "$RELEASE_TAG" \
             --repo "${{ github.repository }}" \
             --title "$RELEASE_TAG" \
-            --generate-notes \
+            --notes "$notes" \
             dist/*
