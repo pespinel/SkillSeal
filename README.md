@@ -63,6 +63,7 @@ discovered skill and prints a per-skill report with a 0-100 score.
 |---|---|---|
 | `--format terminal\|json` | `terminal` | Output format. |
 | `--fail-on warning\|error` | `error` | Minimum finding severity that fails the gate. |
+| `--ignore PREFIX` | none | Suppress findings whose id starts with `PREFIX`. Repeatable. |
 
 ### `skillseal test <path>`
 
@@ -176,6 +177,17 @@ routing:
 
 ## Using it in CI
 
+As a reusable GitHub Action ([`action.yml`](action.yml)):
+
+```yaml
+- uses: pespinel/skillseal@v0.2.0
+  with:
+    path: ./skills
+    fail-on: error
+```
+
+Or driven directly, e.g. to also run routing tests:
+
 ```yaml
 - uses: astral-sh/setup-uv@v3
 
@@ -189,6 +201,18 @@ routing:
 This repo's own [`.github/workflows/ci.yml`](.github/workflows/ci.yml) does
 the same against `examples/`, plus lint/type-check/unit tests.
 
+### pre-commit
+
+```yaml
+repos:
+  - repo: https://github.com/pespinel/skillseal
+    rev: v0.2.0
+    hooks:
+      - id: skillseal
+```
+
+Runs `skillseal check .` whenever a `SKILL.md` changes.
+
 ## Releasing
 
 Publishing to PyPI is automated via
@@ -199,7 +223,15 @@ API token stored anywhere.
 1. Bump `version` in `pyproject.toml`.
 2. Commit, then tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. The workflow verifies the tag matches `pyproject.toml`, builds the sdist
-   and wheel, and publishes to PyPI via OIDC.
+   and wheel, signs a [SLSA build provenance attestation](https://slsa.dev/),
+   and publishes to PyPI via OIDC.
+
+To verify a release artifact was actually built by this repo's workflow
+(not hand-uploaded) before installing it:
+
+```bash
+gh attestation verify dist/skillseal-*.whl --owner pespinel
+```
 
 ## The score
 
@@ -281,6 +313,17 @@ implementations:
   etc.) — see the roadmap.
 
 ## Roadmap
+
+Near-term, likely next:
+
+- Cross-skill conflict detection (duplicate names, and routing-heuristic
+  overlap between two different skills in the same directory — reusing the
+  existing `HeuristicRoutingEvaluator` rather than a new engine)
+- A config file (`skillseal.toml`) to override thresholds (size, description
+  length, etc.) without forking a rule
+- Verifying the SPECIFICATION length thresholds against a published spec
+  (e.g. [agentskills.io](https://agentskills.io/specification)) instead of
+  the current hand-picked numbers
 
 Documented, not implemented, on purpose — this is an MVP:
 
