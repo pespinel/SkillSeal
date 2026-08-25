@@ -33,7 +33,7 @@ _TOOL_PATTERNS = {
 }
 
 _NETWORK_RE = re.compile(
-    r"(https?://|\bnetwork access\b|\binternet access\b|\bapi (call|request)\b|\bdownloads?\b)",
+    r"(https?://|\bnetwork\b|\binternet\b|\bapi (call|request)\b|\bdownloads?\b)",
     re.IGNORECASE,
 )
 _ABS_PATH_RE = re.compile(r"(?:^|[\s`(])(/(?:Users|home|etc|var|opt|tmp)/\S+|[A-Za-z]:\\\S+)")
@@ -43,7 +43,16 @@ _OS_SPECIFIC_RE = re.compile(
 
 
 def _text(skill: Skill) -> str:
-    return f"{skill.body}\n{skill.description}"
+    compatibility = skill.frontmatter.get("compatibility")
+    compatibility_text = compatibility if isinstance(compatibility, str) else ""
+    return f"{skill.body}\n{skill.description}\n{compatibility_text}"
+
+
+def _declared_compatibility(skill: Skill) -> list[Draft]:
+    compatibility = skill.frontmatter.get("compatibility")
+    if not isinstance(compatibility, str) or not compatibility.strip():
+        return []
+    return [Draft(message="Skill declares compatibility requirements.", detail=compatibility)]
 
 
 def _requires_tools(skill: Skill) -> list[Draft]:
@@ -90,6 +99,13 @@ def _os_specific(skill: Skill) -> list[Draft]:
 
 
 RULES: list[Rule] = [
+    FuncRule(
+        id="declared-compatibility",
+        category=Category.PORTABILITY,
+        severity=Severity.INFO,
+        description="Surfaces the frontmatter 'compatibility' field, when declared.",
+        fn=_declared_compatibility,
+    ),
     FuncRule(
         id="requires-tools",
         category=Category.PORTABILITY,
