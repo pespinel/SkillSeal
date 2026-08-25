@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import re
 
+from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import Draft, FuncRule, Rule
 
 _NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 # Per the agentskills.io spec: name/description/license/compatibility/metadata/allowed-tools
-# are the only recognized top-level keys. "keywords" is a SkillSeal-specific extension (not
-# spec-standard) used only by the heuristic routing evaluator — kept here so it doesn't warn.
+# are the only recognized top-level keys. "keywords" and "conflict_ignore" are SkillSeal-specific
+# extensions (not spec-standard), used by the heuristic routing evaluator and `conflicts`
+# respectively — kept here so they don't warn.
 _KNOWN_KEYS = {
     "name",
     "description",
@@ -19,9 +21,11 @@ _KNOWN_KEYS = {
     "metadata",
     "allowed-tools",
     "keywords",
+    "conflict_ignore",
 }
 _MAX_NAME_LEN = 64  # agentskills.io: name must be 1-64 characters
-_MIN_DESCRIPTION_LEN = 10  # our own heuristic floor; spec only requires non-empty
+# min description length is our own heuristic floor (overridable via skillseal.toml);
+# spec only requires non-empty
 _MAX_DESCRIPTION_LEN = 1024  # agentskills.io: description must be 1-1024 characters
 _MAX_COMPATIBILITY_LEN = 500  # agentskills.io: compatibility must be 1-500 characters
 _RESERVED_WORDS = {
@@ -45,25 +49,25 @@ def _has_valid_frontmatter(skill: Skill) -> bool:
     return skill.frontmatter_error is None
 
 
-def _invalid_frontmatter(skill: Skill) -> list[Draft]:
+def _invalid_frontmatter(skill: Skill, config: Config) -> list[Draft]:
     if skill.frontmatter_error is None:
         return []
     return [Draft(message="Frontmatter YAML is invalid.", detail=skill.frontmatter_error)]
 
 
-def _missing_name(skill: Skill) -> list[Draft]:
+def _missing_name(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or "name" in skill.frontmatter:
         return []
     return [Draft(message="Frontmatter is missing required field 'name'.")]
 
 
-def _empty_name(skill: Skill) -> list[Draft]:
+def _empty_name(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or "name" not in skill.frontmatter or skill.name:
         return []
     return [Draft(message="'name' is present but empty.")]
 
 
-def _name_format(skill: Skill) -> list[Draft]:
+def _name_format(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or not skill.name:
         return []
     if _NAME_RE.match(skill.name) and len(skill.name) <= _MAX_NAME_LEN:
@@ -77,7 +81,7 @@ def _name_format(skill: Skill) -> list[Draft]:
     ]
 
 
-def _name_matches_directory(skill: Skill) -> list[Draft]:
+def _name_matches_directory(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or not skill.name:
         return []
     if skill.name == skill.dir_name:
@@ -90,7 +94,7 @@ def _name_matches_directory(skill: Skill) -> list[Draft]:
     ]
 
 
-def _reserved_word_in_name(skill: Skill) -> list[Draft]:
+def _reserved_word_in_name(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or not skill.name:
         return []
     match = _RESERVED_WORD_RE.search(skill.name)
@@ -105,16 +109,16 @@ def _reserved_word_in_name(skill: Skill) -> list[Draft]:
     ]
 
 
-def _missing_description(skill: Skill) -> list[Draft]:
+def _missing_description(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or "description" in skill.frontmatter:
         return []
     return [Draft(message="Frontmatter is missing required field 'description'.")]
 
 
-def _description_too_short(skill: Skill) -> list[Draft]:
+def _description_too_short(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or "description" not in skill.frontmatter:
         return []
-    if len(skill.description) >= _MIN_DESCRIPTION_LEN:
+    if len(skill.description) >= config.min_description_length:
         return []
     return [
         Draft(
@@ -124,7 +128,7 @@ def _description_too_short(skill: Skill) -> list[Draft]:
     ]
 
 
-def _description_too_long(skill: Skill) -> list[Draft]:
+def _description_too_long(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or "description" not in skill.frontmatter:
         return []
     if len(skill.description) <= _MAX_DESCRIPTION_LEN:
@@ -137,7 +141,7 @@ def _description_too_long(skill: Skill) -> list[Draft]:
     ]
 
 
-def _compatibility_too_long(skill: Skill) -> list[Draft]:
+def _compatibility_too_long(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill):
         return []
     compatibility = skill.frontmatter.get("compatibility")
@@ -151,7 +155,7 @@ def _compatibility_too_long(skill: Skill) -> list[Draft]:
     ]
 
 
-def _unknown_frontmatter_keys(skill: Skill) -> list[Draft]:
+def _unknown_frontmatter_keys(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill):
         return []
     unknown = sorted(set(skill.frontmatter) - _KNOWN_KEYS)

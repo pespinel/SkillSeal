@@ -49,7 +49,8 @@ src/skillseal/
 ├── models.py          pydantic models (Skill, Finding, SkillReport, routing types)
 ├── linter.py           ties parser + rules + scoring together
 ├── scoring.py            deterministic 0-100 scoring
-├── conflicts.py            cross-skill: duplicate names, routing-overlap (Jaccard)
+├── config.py               skillseal.toml: threshold overrides (Rule.fn takes Config now)
+├── conflicts.py              cross-skill: duplicate names, routing-overlap (Jaccard)
 ├── rules/                    one module per category: metadata/quality/security/portability
 ├── routing/                    HeuristicRoutingEvaluator + optional LLMRoutingEvaluator
 ├── reporters/                     terminal.py (Rich) and json_reporter.py (stable schema)
@@ -59,12 +60,15 @@ src/skillseal/
 ## Adding a new lint rule
 
 Add a `FuncRule` to the relevant `rules/*.py` module: a plain function
-`(skill: Skill) -> list[Draft]` plus a `FuncRule(id=..., category=..., severity=...,
+`(skill: Skill, config: Config) -> list[Draft]` (ignore `config` if the rule
+has no tunable threshold) plus a `FuncRule(id=..., category=..., severity=...,
 description=..., fn=...)` entry in that module's `RULES` list. One rule id =
 one finding kind — aggregate repeated occurrences of the same issue into a
 single `Draft` with a count in `detail`, don't emit one per occurrence (see
-`rules/security.py` for the pattern). Add a test in the matching
-`tests/test_rules_*.py`.
+`rules/security.py` for the pattern). If the rule has a numeric threshold
+that's our own opinion (not a hard agentskills.io spec limit), add it to
+`Config` in `config.py` so it's overridable via `skillseal.toml`. Add a test
+in the matching `tests/test_rules_*.py`.
 
 ## Don't
 

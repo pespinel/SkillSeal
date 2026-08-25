@@ -3,7 +3,7 @@
 Exit codes (all commands):
   0 = clean / gate passed
   1 = gate failed (--fail-on / --threshold not met, or a conflict was found)
-  2 = usage or config error (bad path, no SKILL.md found, malformed skillseal.yaml)
+  2 = usage or config error (bad path, no SKILL.md found, malformed skillseal.yaml/toml)
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-from skillseal.conflicts import DEFAULT_THRESHOLD as DEFAULT_CONFLICT_THRESHOLD
+from skillseal.config import Config, ConfigError, load_config
 from skillseal.conflicts import find_conflicts
 from skillseal.linter import lint_path
 from skillseal.models import Severity
@@ -66,6 +66,14 @@ _FAIL_ON_SEVERITIES = {
 PathArg = Annotated[Path, typer.Argument(help="Path to a SKILL.md file or a directory of skills.")]
 
 
+def _load_config_or_exit(path: Path) -> Config:
+    try:
+        return load_config(path)
+    except ConfigError as exc:
+        err_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=2) from exc
+
+
 @app.command()
 def check(
     path: PathArg,
@@ -86,7 +94,8 @@ def check(
         err_console.print(f"[red]Error:[/red] path not found: {path}")
         raise typer.Exit(code=2)
 
-    reports = lint_path(path, ignore_prefixes=ignore)
+    config = _load_config_or_exit(path)
+    reports = lint_path(path, config, ignore_prefixes=ignore)
     if not reports:
         err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {path}")
         raise typer.Exit(code=2)
@@ -104,7 +113,10 @@ def check(
 @app.command(name="test")
 def test_routing(
     path: PathArg,
-    threshold: Annotated[float, typer.Option(help="Minimum routing accuracy to pass.")] = 0.9,
+    threshold: Annotated[
+        float | None,
+        typer.Option(help="Minimum routing accuracy to pass. Defaults to skillseal.toml, or 0.9."),
+    ] = None,
     format: Annotated[OutputFormat, typer.Option(help="Output format.")] = OutputFormat.TERMINAL,
     provider: Annotated[
         Provider, typer.Option(help="Routing evaluator to use.")
@@ -114,6 +126,9 @@ def test_routing(
     if not path.exists():
         err_console.print(f"[red]Error:[/red] path not found: {path}")
         raise typer.Exit(code=2)
+
+    config = _load_config_or_exit(path)
+    resolved_threshold = threshold if threshold is not None else config.routing_threshold
 
     evaluator: RoutingEvaluator
     if provider is Provider.LLM:
@@ -126,7 +141,7 @@ def test_routing(
         evaluator = HeuristicRoutingEvaluator()
 
     try:
-        summaries = run_routing_tests_for_path(path, evaluator, threshold)
+        summaries = run_routing_tests_for_path(path, evaluator, resolved_threshold)
     except RoutingConfigError as exc:
         err_console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=2) from exc
@@ -148,16 +163,33 @@ def test_routing(
 def conflicts(
     path: PathArg,
     threshold: Annotated[
-        float, typer.Option(help="Minimum vocabulary similarity (Jaccard) to flag as overlap.")
-    ] = DEFAULT_CONFLICT_THRESHOLD,
+        float | None,
+        typer.Option(
+            help="Minimum vocabulary similarity (Jaccard) to flag. "
+            "Defaults to skillseal.toml, or 0.5."
+        ),
+    ] = None,
+    against: Annotated[
+        Path | None,
+        typer.Option(
+            help="Check skills in <path> against this broader corpus instead of "
+            "all-pairs within <path> (e.g. a new skill against the whole skills repo)."
+        ),
+    ] = None,
     format: Annotated[OutputFormat, typer.Option(help="Output format.")] = OutputFormat.TERMINAL,
 ) -> None:
     """Find cross-skill conflicts: duplicate names and likely routing overlap."""
     if not path.exists():
         err_console.print(f"[red]Error:[/red] path not found: {path}")
         raise typer.Exit(code=2)
+    if against is not None and not against.exists():
+        err_console.print(f"[red]Error:[/red] --against path not found: {against}")
+        raise typer.Exit(code=2)
 
-    report = find_conflicts(path, threshold)
+    config = _load_config_or_exit(path)
+    resolved_threshold = threshold if threshold is not None else config.conflict_threshold
+
+    report = find_conflicts(path, resolved_threshold, against)
     if report.skills_scanned == 0:
         err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {path}")
         raise typer.Exit(code=2)

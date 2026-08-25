@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 
+from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import Draft, FuncRule, Rule, extract_code_spans, local_file_targets
 
@@ -47,70 +48,70 @@ def _matches_in_body(skill: Skill, pattern: re.Pattern[str]) -> list[str]:
     return [m.group(0) for m in pattern.finditer(skill.body)]
 
 
-def _rm_rf(skill: Skill) -> list[Draft]:
+def _rm_rf(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _RM_RF_RE),
         "Potential risk: recursive force-delete command found in a code block.",
     )
 
 
-def _pipe_to_shell(skill: Skill) -> list[Draft]:
+def _pipe_to_shell(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _PIPE_SHELL_RE),
         "Potential risk: downloads remote content and pipes it directly into a shell.",
     )
 
 
-def _eval_exec(skill: Skill) -> list[Draft]:
+def _eval_exec(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _EVAL_EXEC_RE),
         "Potential risk: dynamic code execution (eval/exec) found in a code block.",
     )
 
 
-def _sudo(skill: Skill) -> list[Draft]:
+def _sudo(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _SUDO_RE),
         "Potential risk: elevated-privilege command (sudo) found in a code block.",
     )
 
 
-def _chmod_777(skill: Skill) -> list[Draft]:
+def _chmod_777(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _CHMOD_777_RE),
         "Potential risk: overly permissive file permissions (chmod 777) found in a code block.",
     )
 
 
-def _ssh_key_access(skill: Skill) -> list[Draft]:
+def _ssh_key_access(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_body(skill, _SSH_KEY_RE),
         "Potential risk: skill references the user's SSH key directory (~/.ssh).",
     )
 
 
-def _env_access(skill: Skill) -> list[Draft]:
+def _env_access(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_body(skill, _ENV_ACCESS_RE),
         "Potential risk: skill appears to read a .env file, which often holds secrets.",
     )
 
 
-def _secret_file_read(skill: Skill) -> list[Draft]:
+def _secret_file_read(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _SECRET_FILE_RE),
         "Potential risk: skill appears to read private keys or secret material.",
     )
 
 
-def _interpolated_shell_input(skill: Skill) -> list[Draft]:
+def _interpolated_shell_input(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _INTERP_SHELL_RE),
         "Potential risk: possible unsanitized variable interpolation into a shell command.",
     )
 
 
-def _path_traversal(skill: Skill) -> list[Draft]:
+def _path_traversal(skill: Skill, config: Config) -> list[Draft]:
     skill_root = skill.dir.resolve()
     escapes = []
     for target in local_file_targets(skill.body):
