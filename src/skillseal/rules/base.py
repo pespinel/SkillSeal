@@ -81,7 +81,12 @@ def build_registry() -> list[Rule]:
 
 # --- shared text helpers -------------------------------------------------
 
-_FENCED_CODE_RE = re.compile(r"```.*?\n(.*?)```", re.DOTALL)
+# Matches ``` or ~~~ fences (CommonMark treats them as equivalent); the
+# backreference requires the closing fence to be the exact same marker, so a
+# stray odd-length fence can't mis-pair and swallow prose as "code".
+_FENCED_CODE_RE = re.compile(r"^(```+|~~~+)[^\n]*\n(.*?)\n\1[ \t]*$", re.DOTALL | re.MULTILINE)
+# 4-space/tab-indented blocks are also CommonMark code blocks.
+_INDENTED_CODE_RE = re.compile(r"(?:^(?:[ ]{4,}|\t).*(?:\n|\Z))+", re.MULTILINE)
 _INLINE_CODE_RE = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
 _HEADING_RE = re.compile(r"^#{2,6}[ \t]+(.+)$", re.MULTILINE)
 _MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
@@ -94,8 +99,9 @@ def estimate_tokens(text: str) -> int:
 
 
 def extract_code_spans(text: str) -> list[str]:
-    """Return the contents of fenced code blocks and inline code spans."""
-    spans = list(_FENCED_CODE_RE.findall(text))
+    """Return the contents of fenced/indented code blocks and inline code spans."""
+    spans = [m.group(2) for m in _FENCED_CODE_RE.finditer(text)]
+    spans.extend(_INDENTED_CODE_RE.findall(text))
     spans.extend(_INLINE_CODE_RE.findall(text))
     return spans
 
