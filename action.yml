@@ -1,4 +1,4 @@
-name: "SkillSeal"
+name: "SkillSeal Agent Skill Linter"
 description: "Lint Agent Skills (SKILL.md) for specification, quality, security, and portability issues."
 author: "Pablo Espinel"
 branding:
