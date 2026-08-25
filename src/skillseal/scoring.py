@@ -16,6 +16,14 @@ Specification and quality carry the most weight because they most directly
 determine whether a skill is usable and routes reliably; security is weighted
 close behind since it flags real risk; portability is weighted lowest because
 declared environment dependencies are often expected, not defects.
+
+A category with nothing to evaluate defaults to 100 (nothing found = nothing
+deducted), which means a structurally broken skill — missing name and
+description entirely — can still average out to a misleadingly high total,
+since QUALITY/SECURITY/PORTABILITY have no findings to dock either. Any
+SPECIFICATION ERROR (invalid/missing frontmatter, missing name or
+description) therefore caps the total at 50: a skill that isn't structurally
+valid can't be a passing skill regardless of what the other categories say.
 """
 
 from __future__ import annotations
@@ -36,6 +44,10 @@ WEIGHTS: dict[Category, float] = {
 }
 
 _STATUS_ORDER = [Severity.ERROR, Severity.WARNING, Severity.INFO]
+
+# A structurally invalid skill (bad/missing frontmatter, no name/description)
+# can't be a passing skill no matter what the other categories say.
+SPEC_ERROR_SCORE_CAP = 50
 
 
 def category_status(findings: list[Finding]) -> str:
@@ -58,8 +70,13 @@ def score_skill(findings: list[Finding]) -> tuple[dict[Category, int], int]:
         category: score_category([f for f in findings if f.category == category])
         for category in Category
     }
-    total = sum(category_scores[c] * WEIGHTS[c] for c in Category)
-    return category_scores, round(total)
+    total = round(sum(category_scores[c] * WEIGHTS[c] for c in Category))
+    has_spec_error = any(
+        f.category is Category.SPECIFICATION and f.severity is Severity.ERROR for f in findings
+    )
+    if has_spec_error:
+        total = min(total, SPEC_ERROR_SCORE_CAP)
+    return category_scores, total
 
 
 def build_report(skill: Skill, findings: list[Finding]) -> SkillReport:

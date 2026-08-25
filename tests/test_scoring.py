@@ -1,5 +1,11 @@
 from skillseal.models import Category, Finding, Severity
-from skillseal.scoring import build_report, category_status, score_category, score_skill
+from skillseal.scoring import (
+    SPEC_ERROR_SCORE_CAP,
+    build_report,
+    category_status,
+    score_category,
+    score_skill,
+)
 
 
 def _finding(category: Category, severity: Severity) -> Finding:
@@ -33,12 +39,37 @@ def test_category_status() -> None:
 
 
 def test_score_skill_is_deterministic_and_weighted() -> None:
-    findings = [_finding(Category.SPECIFICATION, Severity.ERROR)]  # SPEC -> 75
+    # a WARNING (not ERROR) in a non-SPECIFICATION category doesn't trigger
+    # the spec-error cap, so the plain weighted-average arithmetic applies.
+    findings = [_finding(Category.SECURITY, Severity.WARNING)]  # SECURITY -> 90
+    category_scores, total = score_skill(findings)
+    assert category_scores[Category.SECURITY] == 90
+    assert category_scores[Category.QUALITY] == 100
+    # 100*0.30 + 100*0.30 + 90*0.25 + 100*0.15 = 97.5 -> rounds to 97 or 98 (banker's rounding)
+    assert total in (97, 98)
+
+
+def test_spec_error_caps_total_score_regardless_of_other_categories() -> None:
+    # a structurally invalid skill can't be a passing skill just because
+    # QUALITY/SECURITY/PORTABILITY have nothing to deduct from (see #13).
+    findings = [_finding(Category.SPECIFICATION, Severity.ERROR)]
     category_scores, total = score_skill(findings)
     assert category_scores[Category.SPECIFICATION] == 75
-    assert category_scores[Category.QUALITY] == 100
-    # 75*0.30 + 100*0.30 + 100*0.25 + 100*0.15 = 92.5 -> rounds to 92 or 93 (banker's rounding)
-    assert total in (92, 93)
+    assert category_scores[Category.QUALITY] == 100  # unaffected, still granular
+    assert total == SPEC_ERROR_SCORE_CAP
+
+
+def test_spec_error_cap_does_not_raise_an_already_lower_score() -> None:
+    # the cap is a ceiling (min), not a floor: when the plain weighted
+    # average is already below it, the cap must not pull the score back up.
+    findings = [
+        _finding(Category.SPECIFICATION, Severity.ERROR),
+        *[_finding(Category.QUALITY, Severity.ERROR) for _ in range(4)],
+        *[_finding(Category.SECURITY, Severity.ERROR) for _ in range(4)],
+        *[_finding(Category.PORTABILITY, Severity.ERROR) for _ in range(4)],
+    ]
+    _, total = score_skill(findings)
+    assert total < SPEC_ERROR_SCORE_CAP
 
 
 def test_build_report_attaches_scores(make_skill) -> None:
