@@ -50,6 +50,8 @@ def test_routing_summaries_to_json_schema(make_skill) -> None:
     payload = routing_summaries_to_json([(skill, summary)])
 
     assert payload["version"] == 1
+    assert payload["skills_scanned"] == 1
+    assert payload["skills_with_tests"] == 1
     entry = payload["skills"][0]
     assert entry["name"] == skill.name
     assert entry["should_trigger"] == {"total": 1, "passed": 1}

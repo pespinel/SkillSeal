@@ -9,6 +9,7 @@ not `@main`:
   with:
     path: ./skills
     fail-on: error
+    min-score: 80
 ```
 
 Or driven directly, e.g. to also run routing tests:
@@ -17,11 +18,16 @@ Or driven directly, e.g. to also run routing tests:
 - uses: astral-sh/setup-uv@v3
 
 - name: Check Agent Skills
-  run: uvx skillseal check ./skills --fail-on error
+  run: uvx skillseal check ./skills --fail-on error --min-score 80
 
 - name: Test Agent Skill Routing
-  run: uvx skillseal test ./skills
+  run: uvx skillseal test ./skills --require-tests
 ```
+
+`--require-tests` fails the gate if any discovered skill has no `skillseal.yaml` —
+without it, a repo that has never written a routing test still exits 0
+("skipped", not "passed"). The action (`action.yml`) only wraps `check`; run
+`skillseal test` directly, as above, to gate on routing tests in CI.
 
 This repo's own [`.github/workflows/ci.yml`](https://github.com/pespinel/skillseal/blob/main/.github/workflows/ci.yml)
 does the same against `examples/`, plus lint/type-check/unit tests.

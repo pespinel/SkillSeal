@@ -14,6 +14,10 @@ inputs:
     description: "Minimum severity that fails the action (warning|error)."
     required: false
     default: "error"
+  min-score:
+    description: "Fail the action if any skill's score is below this (0-100). Unset by default."
+    required: false
+    default: ""
   format:
     description: "Output format (terminal|json)."
     required: false
@@ -36,7 +40,12 @@ runs:
         for prefix in ${{ inputs.ignore }}; do
           ignore_args+=(--ignore "$prefix")
         done
+        min_score_args=()
+        if [ -n "${{ inputs.min-score }}" ]; then
+          min_score_args+=(--min-score "${{ inputs.min-score }}")
+        fi
         uvx skillseal check "${{ inputs.path }}" \
           --fail-on "${{ inputs.fail-on }}" \
           --format "${{ inputs.format }}" \
-          "${ignore_args[@]}"
+          "${ignore_args[@]}" \
+          "${min_score_args[@]}"

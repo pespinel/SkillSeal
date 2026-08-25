@@ -2,7 +2,8 @@
 
 Exit codes (all commands):
   0 = clean / gate passed
-  1 = gate failed (--fail-on / --threshold not met, a conflict was found, or diff regressed)
+  1 = gate failed (--fail-on / --min-score / --threshold / --require-tests not met,
+      a conflict was found, or diff regressed)
   2 = usage or config error (bad path, no SKILL.md found, malformed skillseal.yaml/toml)
 """
 
@@ -106,6 +107,10 @@ def check(
     fail_on: Annotated[
         FailOn, typer.Option(help="Minimum severity that fails the gate.")
     ] = FailOn.ERROR,
+    min_score: Annotated[
+        int | None,
+        typer.Option("--min-score", help="Fail the gate if any skill's score is below this."),
+    ] = None,
     ignore: Annotated[
         list[str],
         typer.Option(
@@ -132,6 +137,9 @@ def check(
 
     gate_severities = _FAIL_ON_SEVERITIES[fail_on]
     gate_failed = any(f.severity in gate_severities for r in reports for f in r.findings)
+    gate_failed = gate_failed or (
+        min_score is not None and any(r.score < min_score for r in reports)
+    )
     raise typer.Exit(code=1 if gate_failed else 0)
 
 
@@ -146,6 +154,13 @@ def test_routing(
     provider: Annotated[
         Provider, typer.Option(help="Routing evaluator to use.")
     ] = Provider.HEURISTIC,
+    require_tests: Annotated[
+        bool,
+        typer.Option(
+            "--require-tests",
+            help="Fail the gate if any discovered skill has no skillseal.yaml.",
+        ),
+    ] = False,
 ) -> None:
     """Run routing tests (skillseal.yaml) for each skill: does it trigger when it should?"""
     if not path.exists():
@@ -180,7 +195,9 @@ def test_routing(
     else:
         render_routing_summaries(summaries, console)
 
+    untested = sum(1 for _, summary in summaries if summary.skipped)
     gate_failed = any(not summary.passed for _, summary in summaries)
+    gate_failed = gate_failed or (require_tests and untested > 0)
     raise typer.Exit(code=1 if gate_failed else 0)
 
 

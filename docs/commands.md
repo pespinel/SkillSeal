@@ -9,6 +9,7 @@ discovered skill and prints a per-skill report with a 0-100 score.
 |---|---|---|
 | `--format terminal\|json` | `terminal` | Output format. |
 | `--fail-on warning\|error` | `error` | Minimum finding severity that fails the gate. |
+| `--min-score <int>` | none | Fail the gate if any skill's score is below this. |
 | `--ignore PREFIX` | none | Suppress findings whose id starts with `PREFIX`. Repeatable. |
 
 ## `skillseal test <path>`
@@ -16,11 +17,13 @@ discovered skill and prints a per-skill report with a 0-100 score.
 Runs the routing test cases declared in each skill's `skillseal.yaml`
 against a `RoutingEvaluator`, and reports accuracy against `should_trigger`
 and `should_not_trigger` prompts. Skills without a `skillseal.yaml` are
-skipped, not failed.
+skipped, not failed — a summary line (`N skill(s), M with routing tests`)
+is always printed so that gap stays visible even without `--require-tests`.
 
 | Flag | Default | Meaning |
 |---|---|---|
 | `--threshold <float>` | `0.9`\* | Minimum accuracy per skill to pass the gate. |
+| `--require-tests` | off | Fail the gate if any discovered skill has no `skillseal.yaml`. |
 | `--format terminal\|json` | `terminal` | Output format. |
 | `--provider heuristic\|llm` | `heuristic` | Evaluator to use — see [Development](development.md). |
 
@@ -107,7 +110,7 @@ the skill worse?" CI check.
 | Code | Meaning |
 |---|---|
 | `0` | Clean, or the gate passed. |
-| `1` | Gate failed (`--fail-on` / `--threshold` not met, a conflict was found, or `diff` regressed). |
+| `1` | Gate failed (`--fail-on` / `--min-score` / `--threshold` / `--require-tests` not met, a conflict was found, or `diff` regressed). |
 | `2` | Usage or config error — bad path, no `SKILL.md` found, malformed `skillseal.yaml`/`.toml`. |
 
 A typo'd path can never silently report success: exit `2` is reserved for
@@ -160,6 +163,8 @@ Portability     90
 
 ```
 $ uv run skillseal test examples/bad-skill
+
+1 skill(s), 1 with routing tests
 
 helper
 

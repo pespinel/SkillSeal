@@ -73,6 +73,39 @@ def test_routing_json_format_is_valid_json() -> None:
     assert payload["version"] == 1
 
 
+def test_routing_require_tests_fails_on_missing_config() -> None:
+    # examples/conflicting-skills has SKILL.md files but no skillseal.yaml
+    result = runner.invoke(app, ["test", str(EXAMPLES / "conflicting-skills"), "--require-tests"])
+    assert result.exit_code == 1
+
+
+def test_routing_without_require_tests_passes_vacuously() -> None:
+    result = runner.invoke(app, ["test", str(EXAMPLES / "conflicting-skills")])
+    assert result.exit_code == 0
+
+
+def test_routing_summary_line_reports_tested_count() -> None:
+    result = runner.invoke(app, ["test", str(EXAMPLES / "good-skill")])
+    assert "1 skill(s), 1 with routing tests" in result.stdout
+
+
+def test_routing_json_reports_skills_with_tests() -> None:
+    result = runner.invoke(app, ["test", str(EXAMPLES / "conflicting-skills"), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert payload["skills_scanned"] == 3
+    assert payload["skills_with_tests"] == 0
+
+
+def test_check_min_score_fails_when_below_threshold() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "good-skill"), "--min-score", "101"])
+    assert result.exit_code == 1
+
+
+def test_check_min_score_passes_when_met() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "good-skill"), "--min-score", "100"])
+    assert result.exit_code == 0
+
+
 def test_routing_llm_provider_without_config_exits_two(monkeypatch) -> None:
     monkeypatch.delenv("SKILLSEAL_BASE_URL", raising=False)
     monkeypatch.delenv("SKILLSEAL_MODEL", raising=False)

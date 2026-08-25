@@ -66,6 +66,9 @@ def _render_skill_report(report: SkillReport, console: Console, root: Path | Non
 def render_routing_summaries(
     summaries: list[tuple[Skill, RoutingSummary]], console: Console
 ) -> None:
+    tested = sum(1 for _, summary in summaries if not summary.skipped)
+    console.print(f"{len(summaries)} skill(s), {tested} with routing tests\n")
+
     for i, (skill, summary) in enumerate(summaries):
         if i > 0:
             console.print()

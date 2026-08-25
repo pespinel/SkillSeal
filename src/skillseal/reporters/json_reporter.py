@@ -50,8 +50,11 @@ def _report_to_dict(report: SkillReport, root: Path | None) -> dict[str, Any]:
 
 
 def routing_summaries_to_json(summaries: list[tuple[Skill, RoutingSummary]]) -> dict[str, Any]:
+    tested = sum(1 for _, s in summaries if not s.skipped)
     return {
         "version": SCHEMA_VERSION,
+        "skills_scanned": len(summaries),
+        "skills_with_tests": tested,
         "skills": [_summary_to_dict(skill, s) for skill, s in summaries],
     }
 
