@@ -1,8 +1,8 @@
 """SkillSeal CLI.
 
-Exit codes (both commands):
+Exit codes (all commands):
   0 = clean / gate passed
-  1 = gate failed (--fail-on / --threshold not met)
+  1 = gate failed (--fail-on / --threshold not met, or a conflict was found)
   2 = usage or config error (bad path, no SKILL.md found, malformed skillseal.yaml)
 """
 
@@ -16,10 +16,20 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
+from skillseal.conflicts import DEFAULT_THRESHOLD as DEFAULT_CONFLICT_THRESHOLD
+from skillseal.conflicts import find_conflicts
 from skillseal.linter import lint_path
 from skillseal.models import Severity
-from skillseal.reporters.json_reporter import check_reports_to_json, routing_summaries_to_json
-from skillseal.reporters.terminal import render_check_reports, render_routing_summaries
+from skillseal.reporters.json_reporter import (
+    check_reports_to_json,
+    conflict_report_to_json,
+    routing_summaries_to_json,
+)
+from skillseal.reporters.terminal import (
+    render_check_reports,
+    render_conflict_report,
+    render_routing_summaries,
+)
 from skillseal.routing.evaluator import (
     HeuristicRoutingEvaluator,
     LLMRoutingEvaluator,
@@ -132,6 +142,32 @@ def test_routing(
 
     gate_failed = any(not summary.passed for _, summary in summaries)
     raise typer.Exit(code=1 if gate_failed else 0)
+
+
+@app.command()
+def conflicts(
+    path: PathArg,
+    threshold: Annotated[
+        float, typer.Option(help="Minimum vocabulary similarity (Jaccard) to flag as overlap.")
+    ] = DEFAULT_CONFLICT_THRESHOLD,
+    format: Annotated[OutputFormat, typer.Option(help="Output format.")] = OutputFormat.TERMINAL,
+) -> None:
+    """Find cross-skill conflicts: duplicate names and likely routing overlap."""
+    if not path.exists():
+        err_console.print(f"[red]Error:[/red] path not found: {path}")
+        raise typer.Exit(code=2)
+
+    report = find_conflicts(path, threshold)
+    if report.skills_scanned == 0:
+        err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {path}")
+        raise typer.Exit(code=2)
+
+    if format is OutputFormat.JSON:
+        print(json.dumps(conflict_report_to_json(report), indent=2))
+    else:
+        render_conflict_report(report, console)
+
+    raise typer.Exit(code=1 if report.has_conflicts else 0)
 
 
 if __name__ == "__main__":

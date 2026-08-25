@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from skillseal.models import Category, RoutingSummary, Skill, SkillReport
+from skillseal.models import Category, ConflictReport, RoutingSummary, Skill, SkillReport
 from skillseal.reporters.terminal import display_path
 
 SCHEMA_VERSION = 1
@@ -75,5 +75,32 @@ def _summary_to_dict(skill: Skill, summary: RoutingSummary) -> dict[str, Any]:
                 "passed": r.passed,
             }
             for r in summary.results
+        ],
+    }
+
+
+def conflict_report_to_json(report: ConflictReport, root: Path | None = None) -> dict[str, Any]:
+    return {
+        "version": SCHEMA_VERSION,
+        "threshold": report.threshold,
+        "skills_scanned": report.skills_scanned,
+        "has_conflicts": report.has_conflicts,
+        "duplicate_names": [
+            {
+                "name": d.name,
+                "paths": [display_path(p, root) for p in d.paths],
+            }
+            for d in report.duplicate_names
+        ],
+        "routing_overlaps": [
+            {
+                "skill_a": o.skill_a,
+                "skill_b": o.skill_b,
+                "path_a": display_path(o.path_a, root),
+                "path_b": display_path(o.path_b, root),
+                "similarity": o.similarity,
+                "shared_terms": o.shared_terms,
+            }
+            for o in report.routing_overlaps
         ],
     }

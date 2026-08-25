@@ -78,3 +78,33 @@ def test_routing_llm_provider_without_config_exits_two(monkeypatch) -> None:
     monkeypatch.delenv("SKILLSEAL_MODEL", raising=False)
     result = runner.invoke(app, ["test", str(EXAMPLES / "good-skill"), "--provider", "llm"])
     assert result.exit_code == 2
+
+
+def test_conflicts_clean_directory_exits_zero() -> None:
+    result = runner.invoke(app, ["conflicts", str(EXAMPLES / "good-skill")])
+    assert result.exit_code == 0
+
+
+def test_conflicts_detects_both_kinds_and_exits_one() -> None:
+    result = runner.invoke(app, ["conflicts", str(EXAMPLES / "conflicting-skills")])
+    assert result.exit_code == 1
+
+
+def test_conflicts_json_format_is_valid_json() -> None:
+    result = runner.invoke(
+        app, ["conflicts", str(EXAMPLES / "conflicting-skills"), "--format", "json"]
+    )
+    payload = json.loads(result.stdout)
+    assert payload["has_conflicts"] is True
+    assert len(payload["duplicate_names"]) == 1
+    assert len(payload["routing_overlaps"]) == 1
+
+
+def test_conflicts_nonexistent_path_exits_two() -> None:
+    result = runner.invoke(app, ["conflicts", str(EXAMPLES / "does-not-exist")])
+    assert result.exit_code == 2
+
+
+def test_conflicts_no_skills_found_exits_two(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["conflicts", str(tmp_path)])
+    assert result.exit_code == 2

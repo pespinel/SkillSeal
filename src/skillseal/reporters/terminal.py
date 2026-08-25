@@ -1,4 +1,4 @@
-"""Rich-based terminal output for `skillseal check` and `skillseal test`."""
+"""Rich-based terminal output for `skillseal check`, `test`, and `conflicts`."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from skillseal.models import Category, RoutingSummary, Severity, Skill, SkillReport
+from skillseal.models import Category, ConflictReport, RoutingSummary, Severity, Skill, SkillReport
 from skillseal.scoring import category_status
 
 _STATUS_COLOR = {"PASS": "green", "WARN": "yellow", "FAIL": "red"}
@@ -87,3 +87,31 @@ def render_routing_summaries(
                 console.print(f"  Actual: {actual}")
                 console.print("  Likely reason:")
                 console.print(f"  {r.reason}\n")
+
+
+def render_conflict_report(
+    report: ConflictReport, console: Console, root: Path | None = None
+) -> None:
+    console.print(f"Scanned {report.skills_scanned} skill(s)\n")
+
+    if not report.has_conflicts:
+        console.print("[green]No conflicts found.[/green]")
+        return
+
+    if report.duplicate_names:
+        console.print("[bold]Duplicate names[/bold]\n")
+        for dup in report.duplicate_names:
+            console.print(f'[red]✗[/red] "{dup.name}" used by {len(dup.paths)} skills:')
+            for p in dup.paths:
+                console.print(f"  - {display_path(p, root)}")
+            console.print()
+
+    if report.routing_overlaps:
+        console.print("[bold]Routing overlap[/bold]\n")
+        for ov in report.routing_overlaps:
+            console.print(f'[red]✗[/red] "{ov.skill_a}" and "{ov.skill_b}"')
+            console.print(f"  {display_path(ov.path_a, root)}")
+            console.print(f"  {display_path(ov.path_b, root)}")
+            console.print(f"  Similarity: {ov.similarity:.0%} (threshold: {report.threshold:.0%})")
+            console.print(f"  Shared terms: {', '.join(ov.shared_terms[:8])}")
+            console.print()
