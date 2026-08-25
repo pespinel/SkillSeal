@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
+from skillseal.config import DEFAULT_CONFIG, Config
 from skillseal.models import Category, Finding, Severity, Skill
 
 
@@ -22,7 +23,7 @@ class Rule(Protocol):
     @property
     def description(self) -> str: ...
 
-    def check(self, skill: Skill) -> list[Finding]: ...
+    def check(self, skill: Skill, config: Config = DEFAULT_CONFIG) -> list[Finding]: ...
 
 
 @dataclass(frozen=True)
@@ -47,9 +48,9 @@ class FuncRule:
     category: Category
     severity: Severity
     description: str
-    fn: Callable[[Skill], list[Draft]]
+    fn: Callable[[Skill, Config], list[Draft]]
 
-    def check(self, skill: Skill) -> list[Finding]:
+    def check(self, skill: Skill, config: Config = DEFAULT_CONFIG) -> list[Finding]:
         return [
             Finding(
                 id=self.id,
@@ -58,7 +59,7 @@ class FuncRule:
                 message=draft.message,
                 detail=draft.detail,
             )
-            for draft in self.fn(skill)
+            for draft in self.fn(skill, config)
         ]
 
 
