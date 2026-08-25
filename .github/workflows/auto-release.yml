@@ -2,10 +2,13 @@ name: Auto Release
 
 # Triggered by CI finishing (not by push directly) so a release can never go
 # out for a commit whose tests haven't actually passed. If pyproject.toml's
-# version doesn't match any existing tag, tags it and calls release.yml
-# in-process (a tag pushed with the default GITHUB_TOKEN does NOT trigger
-# other workflows via `push`, so we invoke it directly instead of relying on
-# that).
+# version doesn't match any existing tag, tags it and dispatches release.yml
+# via the API (workflow_dispatch) — NOT workflow_call: PyPI Trusted
+# Publishing rejects the OIDC exchange for reusable-workflow invocations, so
+# this has to be a genuine top-level run of release.yml, same as if a human
+# had triggered it. A tag pushed with the default GITHUB_TOKEN also wouldn't
+# trigger release.yml's own `push: tags` listener, which is the other reason
+# an explicit dispatch is needed here rather than just pushing the tag.
 on:
   workflow_run:
     workflows: ["CI"]
@@ -21,8 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      new_tag: ${{ steps.check.outputs.new_tag }}
+      actions: write # required to dispatch release.yml
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,21 +48,14 @@ jobs:
             echo "new_tag=$tag" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Tag
+      - name: Tag and dispatch the release
         if: steps.check.outputs.new_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_TAG: ${{ steps.check.outputs.new_tag }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "${{ steps.check.outputs.new_tag }}" "${{ github.event.workflow_run.head_sha }}"
-          git push origin "${{ steps.check.outputs.new_tag }}"
-
-  release:
-    needs: tag
-    if: needs.tag.outputs.new_tag != ''
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-    uses: ./.github/workflows/release.yml
-    with:
-      tag: ${{ needs.tag.outputs.new_tag }}
+          git tag "$NEW_TAG" "${{ github.event.workflow_run.head_sha }}"
+          git push origin "$NEW_TAG"
+          gh workflow run release.yml --repo "${{ github.repository }}" -f "tag=$NEW_TAG"

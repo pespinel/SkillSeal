@@ -1,15 +1,19 @@
 name: Release
 
-# Two ways in:
-#   1. workflow_call — invoked by auto-release.yml right after CI passes on a
-#      pyproject.toml version bump on main. This is the normal path.
+# Two ways in — both genuine top-level triggers, deliberately NOT
+# workflow_call: PyPI Trusted Publishing does not support reusable-workflow
+# invocation and will reject the OIDC exchange if this is called that way
+# (https://docs.pypi.org/trusted-publishers/troubleshooting/#reusable-workflows-on-github).
+#   1. workflow_dispatch — auto-release.yml dispatches this via the API right
+#      after CI passes on a pyproject.toml version bump on main. This is the
+#      normal path.
 #   2. push: tags — a manual escape hatch (`git tag vX.Y.Z && git push origin
 #      vX.Y.Z`) for re-running or backfilling a release by hand.
 on:
   push:
     tags:
       - "v*.*.*"
-  workflow_call:
+  workflow_dispatch:
     inputs:
       tag:
         description: "Tag to release (defaults to the triggering tag push)."
