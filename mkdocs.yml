@@ -1,0 +1,40 @@
+site_name: SkillSeal
+site_description: Lint, score, and routing-test Agent Skills (SKILL.md) before your agents do.
+site_url: https://pespinel.github.io/skillseal/
+repo_url: https://github.com/pespinel/skillseal
+repo_name: pespinel/skillseal
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Commands: commands.md
+  - Configuration: configuration.md
+  - Using it in CI: ci.md
+  - Development: development.md
+  - Limitations: limitations.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - tables
