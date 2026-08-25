@@ -1,0 +1,18 @@
+version: 1
+
+routing:
+  should_trigger:
+    - "Help me with this task"
+    - "I need help with a task"
+    - "Can you assist with tasks today?"
+    - "Please help with my chores"
+    - "What tasks can you help with?"
+
+  should_not_trigger:
+    - "Review this payment implementation"
+    - "Write a poem about the ocean"
+    - "Help me write a poem"
+    - "Can somebody help fix my bug?"
+    - "Explain how photosynthesis works"
+    - "Can you help me understand OAuth?"
+    - "I'd like some help debugging this script"

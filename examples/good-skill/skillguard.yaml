@@ -1,0 +1,16 @@
+version: 1
+
+routing:
+  should_trigger:
+    - "Review this payment implementation"
+    - "Check whether our Stripe integration has security issues"
+    - "Review the checkout payment flow"
+    - "Can you audit this webhook verification code?"
+    - "Check the refund logic for correctness"
+
+  should_not_trigger:
+    - "Write a React button component"
+    - "Explain how Kubernetes services work"
+    - "Review this CSS for the landing page"
+    - "Help me write a SQL migration for the users table"
+    - "What's a good regex for validating emails?"

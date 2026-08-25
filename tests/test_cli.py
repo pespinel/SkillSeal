@@ -1,0 +1,70 @@
+import json
+from pathlib import Path
+
+from typer.testing import CliRunner
+
+from skillguard.cli import app
+
+runner = CliRunner()
+EXAMPLES = Path(__file__).parent.parent / "examples"
+
+
+def test_check_good_skill_exits_zero() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "good-skill"), "--fail-on", "error"])
+    assert result.exit_code == 0
+
+
+def test_check_bad_skill_exits_one_on_error_gate() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--fail-on", "error"])
+    assert result.exit_code == 1
+
+
+def test_check_bad_skill_passes_lower_gate_ignored() -> None:
+    # --fail-on warning is stricter than error, bad-skill has warnings too either way
+    result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--fail-on", "warning"])
+    assert result.exit_code == 1
+
+
+def test_check_nonexistent_path_exits_two() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "does-not-exist")])
+    assert result.exit_code == 2
+
+
+def test_check_path_with_no_skills_exits_two(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["check", str(tmp_path)])
+    assert result.exit_code == 2
+
+
+def test_check_json_format_is_valid_json() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "good-skill"), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert payload["version"] == 1
+    assert len(payload["skills"]) == 1
+
+
+def test_routing_good_skill_exits_zero() -> None:
+    result = runner.invoke(app, ["test", str(EXAMPLES / "good-skill")])
+    assert result.exit_code == 0
+
+
+def test_routing_bad_skill_exits_one_at_default_threshold() -> None:
+    result = runner.invoke(app, ["test", str(EXAMPLES / "bad-skill")])
+    assert result.exit_code == 1
+
+
+def test_routing_bad_skill_passes_low_threshold() -> None:
+    result = runner.invoke(app, ["test", str(EXAMPLES / "bad-skill"), "--threshold", "0.5"])
+    assert result.exit_code == 0
+
+
+def test_routing_json_format_is_valid_json() -> None:
+    result = runner.invoke(app, ["test", str(EXAMPLES / "good-skill"), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert payload["version"] == 1
+
+
+def test_routing_llm_provider_without_config_exits_two(monkeypatch) -> None:
+    monkeypatch.delenv("SKILLGUARD_BASE_URL", raising=False)
+    monkeypatch.delenv("SKILLGUARD_MODEL", raising=False)
+    result = runner.invoke(app, ["test", str(EXAMPLES / "good-skill"), "--provider", "llm"])
+    assert result.exit_code == 2

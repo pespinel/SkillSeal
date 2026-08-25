@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Type check (mypy)
+        run: uv run mypy src
+
+      - name: Unit tests
+        run: uv run pytest -q
+
+      # Smoke-test the tool against its own examples. good-skill is expected to
+      # pass both gates; bad-skill is deliberately broken and expected to fail
+      # both, so the pipeline asserts that failure rather than requiring it to
+      # (accidentally) pass.
+      - name: Check good-skill example (expected to pass)
+        run: uv run skillguard check examples/good-skill --fail-on error
+
+      - name: Check bad-skill example (expected to fail the gate)
+        run: |
+          if uv run skillguard check examples/bad-skill --fail-on error; then
+            echo "expected examples/bad-skill to fail the --fail-on error gate" >&2
+            exit 1
+          fi
+
+      - name: Routing tests for good-skill example (expected to pass)
+        run: uv run skillguard test examples/good-skill
+
+      - name: Routing tests for bad-skill example (expected to fail the threshold)
+        run: |
+          if uv run skillguard test examples/bad-skill; then
+            echo "expected examples/bad-skill routing tests to fail the threshold" >&2
+            exit 1
+          fi

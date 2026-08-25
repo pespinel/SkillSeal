@@ -1,0 +1,76 @@
+from skillguard.rules import metadata
+
+
+def _run(skill) -> set[str]:
+    return {f.id for rule in metadata.RULES for f in rule.check(skill)}
+
+
+def test_clean_skill_has_no_findings(make_skill) -> None:
+    skill = make_skill(dir_name="my-skill", name="my-skill")
+    assert _run(skill) == set()
+
+
+def test_invalid_frontmatter_short_circuits(make_skill) -> None:
+    skill = make_skill(frontmatter_error="mapping values are not allowed here")
+    findings = _run(skill)
+    assert findings == {"invalid-frontmatter"}
+
+
+def test_missing_name(make_skill) -> None:
+    skill = make_skill(frontmatter={"description": "Use this when doing things."})
+    assert "missing-name" in _run(skill)
+
+
+def test_empty_name(make_skill) -> None:
+    skill = make_skill(
+        name="", frontmatter={"name": "", "description": "Use this when doing things."}
+    )
+    assert "empty-name" in _run(skill)
+
+
+def test_invalid_name_format(make_skill) -> None:
+    skill = make_skill(
+        name="My Skill!",
+        frontmatter={"name": "My Skill!", "description": "Use this when doing things."},
+    )
+    assert "invalid-name-format" in _run(skill)
+
+
+def test_name_directory_mismatch(make_skill) -> None:
+    skill = make_skill(
+        name="other-name",
+        dir_name="my-skill",
+        frontmatter={"name": "other-name", "description": "Use this when doing things."},
+    )
+    assert "name-directory-mismatch" in _run(skill)
+
+
+def test_missing_description(make_skill) -> None:
+    skill = make_skill(frontmatter={"name": "my-skill"})
+    assert "missing-description" in _run(skill)
+
+
+def test_description_too_short(make_skill) -> None:
+    skill = make_skill(
+        description="short", frontmatter={"name": "my-skill", "description": "short"}
+    )
+    assert "description-too-short" in _run(skill)
+
+
+def test_description_too_long(make_skill) -> None:
+    long_desc = "word " * 300
+    skill = make_skill(
+        description=long_desc, frontmatter={"name": "my-skill", "description": long_desc}
+    )
+    assert "description-too-long" in _run(skill)
+
+
+def test_unknown_frontmatter_keys(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "totally_unknown_key": "value",
+        }
+    )
+    assert "unknown-frontmatter-keys" in _run(skill)
