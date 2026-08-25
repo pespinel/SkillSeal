@@ -32,10 +32,14 @@ def _conflict_ignore_list(skill: Skill) -> list[str]:
 
 
 def _ignores(skill: Skill, other: Skill) -> bool:
+    """Exact match only — a substring match here would silently over-suppress
+
+    real conflicts (e.g. `conflict_ignore: ["e"]` matching almost anything).
+    """
     ignore_list = _conflict_ignore_list(skill)
     if not ignore_list:
         return False
-    return any(entry == (other.name or "") or entry in str(other.path) for entry in ignore_list)
+    return any(entry in (other.name, other.dir_name) for entry in ignore_list)
 
 
 def _find_duplicate_names(

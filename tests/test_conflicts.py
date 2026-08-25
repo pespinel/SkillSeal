@@ -106,6 +106,29 @@ def test_conflict_ignore_suppresses_routing_overlap(tmp_path: Path) -> None:
     assert report.routing_overlaps == []
 
 
+def test_conflict_ignore_does_not_over_match_by_substring(tmp_path: Path) -> None:
+    # regression: a short conflict_ignore entry must not silently suppress
+    # comparisons against unrelated skills just because it's a substring of
+    # their path (e.g. "e" matching almost any directory name).
+    _write_skill(
+        tmp_path,
+        "a",
+        "alpha-reviewer",
+        "Use this skill when reviewing pull requests for code quality, style, and bugs.",
+        extra_frontmatter='conflict_ignore:\n  - "e"\n',
+    )
+    _write_skill(
+        tmp_path,
+        "b",
+        "beta-reviewer",
+        "Use this skill when reviewing PRs for code style problems, quality issues, and bugs.",
+    )
+
+    report = find_conflicts(tmp_path, threshold=0.3)
+
+    assert len(report.routing_overlaps) == 1
+
+
 def test_against_only_reports_pairs_involving_target(tmp_path: Path) -> None:
     target_root = tmp_path / "target"
     corpus_root = tmp_path / "corpus"
