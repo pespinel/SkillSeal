@@ -177,6 +177,18 @@ routing:
 This repo's own [`.github/workflows/ci.yml`](.github/workflows/ci.yml) does
 the same against `examples/`, plus lint/type-check/unit tests.
 
+## Releasing
+
+Publishing to PyPI is automated via
+[`.github/workflows/release.yml`](.github/workflows/release.yml) using
+[PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) — no
+API token stored anywhere.
+
+1. Bump `version` in `pyproject.toml`.
+2. Commit, then tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. The workflow verifies the tag matches `pyproject.toml`, builds the sdist
+   and wheel, and publishes to PyPI via OIDC.
+
 ## The score
 
 Deterministic, no LLM involved. Each of the four categories starts at 100 and
