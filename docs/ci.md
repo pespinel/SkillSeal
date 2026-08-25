@@ -1,9 +1,11 @@
 # Using it in CI
 
-As a reusable GitHub Action ([`action.yml`](https://github.com/pespinel/skillseal/blob/main/action.yml)):
+As a reusable GitHub Action ([`action.yml`](https://github.com/pespinel/skillseal/blob/main/action.yml)) —
+pin to the [latest release tag](https://github.com/pespinel/skillseal/releases/latest),
+not `@main`:
 
 ```yaml
-- uses: pespinel/skillseal@v0.2.1
+- uses: pespinel/skillseal@v0.6.0
   with:
     path: ./skills
     fail-on: error
@@ -26,10 +28,12 @@ does the same against `examples/`, plus lint/type-check/unit tests.
 
 ## pre-commit
 
+Also pin `rev` to the [latest release tag](https://github.com/pespinel/skillseal/releases/latest):
+
 ```yaml
 repos:
   - repo: https://github.com/pespinel/skillseal
-    rev: v0.2.1
+    rev: v0.6.0
     hooks:
       - id: skillseal
 ```
