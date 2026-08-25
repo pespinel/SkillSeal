@@ -16,6 +16,24 @@ def test_invalid_frontmatter_short_circuits(make_skill) -> None:
     assert findings == {"invalid-frontmatter"}
 
 
+def test_missing_frontmatter_short_circuits(make_skill) -> None:
+    skill = make_skill(
+        frontmatter_error="No '---' frontmatter block was found.",
+        frontmatter_error_kind="missing-frontmatter",
+    )
+    findings = _run(skill)
+    assert findings == {"missing-frontmatter"}
+
+
+def test_frontmatter_not_at_start_short_circuits(make_skill) -> None:
+    skill = make_skill(
+        frontmatter_error="A '---' frontmatter block was found, but not at the start.",
+        frontmatter_error_kind="frontmatter-not-at-start",
+    )
+    findings = _run(skill)
+    assert findings == {"frontmatter-not-at-start"}
+
+
 def test_missing_name(make_skill) -> None:
     skill = make_skill(frontmatter={"description": "Use this when doing things."})
     assert "missing-name" in _run(skill)

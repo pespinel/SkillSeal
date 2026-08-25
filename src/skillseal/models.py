@@ -47,6 +47,8 @@ class Skill(BaseModel):
     path: Path
     dir: Path
     frontmatter_error: str | None = None
+    # "missing-frontmatter" | "frontmatter-not-at-start" | "invalid-frontmatter" | None
+    frontmatter_error_kind: str | None = None
 
     @property
     def dir_name(self) -> str:

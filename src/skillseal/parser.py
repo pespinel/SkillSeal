@@ -36,10 +36,21 @@ def discover_skills(path: Path) -> list[Path]:
 
 def parse_skill(path: Path) -> Skill:
     """Parse a SKILL.md file into a Skill. Never raises on malformed frontmatter."""
-    raw_text = path.read_text(encoding="utf-8")
+    # A leading UTF-8 BOM (common from Windows editors/some CI checkouts) would
+    # otherwise defeat the \A anchor and get misdiagnosed as "missing frontmatter".
+    raw_text = path.read_text(encoding="utf-8").lstrip("\ufeff")
 
     match = _FRONTMATTER_RE.match(raw_text)
     if match is None:
+        stripped = raw_text.lstrip()
+        # A block exists once leading whitespace (e.g. a blank first line) is
+        # removed: the frontmatter is real, just not at offset 0 as required.
+        if stripped != raw_text and _FRONTMATTER_RE.match(stripped) is not None:
+            error_kind = "frontmatter-not-at-start"
+            error_detail = "A '---' frontmatter block was found, but not at the start of the file."
+        else:
+            error_kind = "missing-frontmatter"
+            error_detail = "No '---' frontmatter block was found."
         return Skill(
             name="",
             description="",
@@ -48,7 +59,8 @@ def parse_skill(path: Path) -> Skill:
             raw_text=raw_text,
             path=path,
             dir=path.parent,
-            frontmatter_error=None,
+            frontmatter_error=error_detail,
+            frontmatter_error_kind=error_kind,
         )
 
     body = raw_text[match.end() :]
@@ -82,4 +94,5 @@ def parse_skill(path: Path) -> Skill:
         path=path,
         dir=path.parent,
         frontmatter_error=frontmatter_error,
+        frontmatter_error_kind="invalid-frontmatter" if frontmatter_error is not None else None,
     )

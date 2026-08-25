@@ -13,6 +13,7 @@ def make_skill(tmp_path: Path):
         body: str = "# My Skill\n\nDo the thing.\n",
         frontmatter: dict | None = None,
         frontmatter_error: str | None = None,
+        frontmatter_error_kind: str | None = None,
         dir_name: str = "my-skill",
     ) -> Skill:
         skill_dir = tmp_path / dir_name
@@ -30,6 +31,11 @@ def make_skill(tmp_path: Path):
             path=path,
             dir=skill_dir,
             frontmatter_error=frontmatter_error,
+            frontmatter_error_kind=(
+                frontmatter_error_kind
+                if frontmatter_error_kind is not None
+                else ("invalid-frontmatter" if frontmatter_error is not None else None)
+            ),
         )
 
     return _make

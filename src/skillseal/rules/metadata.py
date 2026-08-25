@@ -49,8 +49,26 @@ def _has_valid_frontmatter(skill: Skill) -> bool:
     return skill.frontmatter_error is None
 
 
+def _missing_frontmatter(skill: Skill, config: Config) -> list[Draft]:
+    if skill.frontmatter_error_kind != "missing-frontmatter":
+        return []
+    return [Draft(message="No frontmatter block found.", detail=skill.frontmatter_error)]
+
+
+def _frontmatter_not_at_start(skill: Skill, config: Config) -> list[Draft]:
+    if skill.frontmatter_error_kind != "frontmatter-not-at-start":
+        return []
+    return [
+        Draft(
+            message="Frontmatter block exists but isn't at the very start of the file.",
+            detail="Check for a leading blank line, whitespace, or invisible character "
+            "before the opening '---'.",
+        )
+    ]
+
+
 def _invalid_frontmatter(skill: Skill, config: Config) -> list[Draft]:
-    if skill.frontmatter_error is None:
+    if skill.frontmatter_error_kind != "invalid-frontmatter":
         return []
     return [Draft(message="Frontmatter YAML is invalid.", detail=skill.frontmatter_error)]
 
@@ -165,6 +183,20 @@ def _unknown_frontmatter_keys(skill: Skill, config: Config) -> list[Draft]:
 
 
 RULES: list[Rule] = [
+    FuncRule(
+        id="missing-frontmatter",
+        category=Category.SPECIFICATION,
+        severity=Severity.ERROR,
+        description="A SKILL.md must have a '---' frontmatter block.",
+        fn=_missing_frontmatter,
+    ),
+    FuncRule(
+        id="frontmatter-not-at-start",
+        category=Category.SPECIFICATION,
+        severity=Severity.ERROR,
+        description="The frontmatter block must be the very first thing in the file.",
+        fn=_frontmatter_not_at_start,
+    ),
     FuncRule(
         id="invalid-frontmatter",
         category=Category.SPECIFICATION,

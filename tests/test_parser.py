@@ -50,8 +50,29 @@ def test_parse_skill_missing_frontmatter(tmp_path: Path) -> None:
 
     skill = parse_skill(skill_file)
 
-    assert skill.frontmatter_error is None
+    assert skill.frontmatter_error is not None
+    assert skill.frontmatter_error_kind == "missing-frontmatter"
     assert skill.frontmatter == {}
+    assert skill.name == ""
+
+
+def test_parse_skill_strips_leading_bom(tmp_path: Path) -> None:
+    skill_file = tmp_path / "SKILL.md"
+    skill_file.write_text("\ufeff" + GOOD_SKILL)
+
+    skill = parse_skill(skill_file)
+
+    assert skill.frontmatter_error is None
+    assert skill.name == "my-skill"
+
+
+def test_parse_skill_frontmatter_not_at_start(tmp_path: Path) -> None:
+    skill_file = tmp_path / "SKILL.md"
+    skill_file.write_text("\n" + GOOD_SKILL)
+
+    skill = parse_skill(skill_file)
+
+    assert skill.frontmatter_error_kind == "frontmatter-not-at-start"
     assert skill.name == ""
 
 
