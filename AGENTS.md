@@ -69,8 +69,8 @@ single `Draft` with a count in `detail`, don't emit one per occurrence (see
 
 - Hand-edit `uv.lock` — regenerate it with `uv lock` / `uv sync`.
 - Add a new dependency for something the stdlib or an existing dependency
-  already covers (see the Limitations/Roadmap sections in README — this is a
-  deliberately small MVP).
+  already covers (see the Limitations/Roadmap sections in README — the
+  scope is kept deliberately small).
 - Bump `pyproject.toml`'s `version` without also tagging a matching
   `vX.Y.Z` release (see README's Releasing section) — the release workflow
   checks they match and fails otherwise.

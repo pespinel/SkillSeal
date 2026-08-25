@@ -321,11 +321,8 @@ Near-term, likely next:
   existing `HeuristicRoutingEvaluator` rather than a new engine)
 - A config file (`skillseal.toml`) to override thresholds (size, description
   length, etc.) without forking a rule
-- Verifying the SPECIFICATION length thresholds against a published spec
-  (e.g. [agentskills.io](https://agentskills.io/specification)) instead of
-  the current hand-picked numbers
 
-Documented, not implemented, on purpose — this is an MVP:
+Documented, not implemented, on purpose — deliberately out of scope for now:
 
 - Real execution against Claude Code, Codex, Gemini, and other agents
 - A compatibility matrix across agents/environments
