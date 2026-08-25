@@ -49,10 +49,11 @@ src/skillseal/
 ├── models.py          pydantic models (Skill, Finding, SkillReport, routing types)
 ├── linter.py           ties parser + rules + scoring together
 ├── scoring.py            deterministic 0-100 scoring
-├── rules/                 one module per category: metadata/quality/security/portability
-├── routing/                 HeuristicRoutingEvaluator + optional LLMRoutingEvaluator
-├── reporters/                 terminal.py (Rich) and json_reporter.py (stable schema)
-└── cli.py                       typer app: check, test
+├── conflicts.py            cross-skill: duplicate names, routing-overlap (Jaccard)
+├── rules/                    one module per category: metadata/quality/security/portability
+├── routing/                    HeuristicRoutingEvaluator + optional LLMRoutingEvaluator
+├── reporters/                     terminal.py (Rich) and json_reporter.py (stable schema)
+└── cli.py                           typer app: check, test, conflicts
 ```
 
 ## Adding a new lint rule

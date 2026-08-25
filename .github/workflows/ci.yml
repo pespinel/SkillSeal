@@ -54,3 +54,16 @@ jobs:
             echo "expected examples/bad-skill routing tests to fail the threshold" >&2
             exit 1
           fi
+
+      # examples/conflicting-skills is nested under examples/, so a scan of the
+      # whole tree always finds conflicts — point the "clean" check at a single
+      # skill instead of the whole examples/ directory.
+      - name: Conflicts for a single skill (expected to pass, trivially)
+        run: uv run skillseal conflicts examples/good-skill
+
+      - name: Conflicts for conflicting-skills example (expected to detect both kinds)
+        run: |
+          if uv run skillseal conflicts examples/conflicting-skills; then
+            echo "expected examples/conflicting-skills to report conflicts" >&2
+            exit 1
+          fi

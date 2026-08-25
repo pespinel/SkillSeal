@@ -45,11 +45,12 @@ uv sync
 ```bash
 skillseal check examples
 skillseal test examples
+skillseal conflicts examples/conflicting-skills
 ```
 
-(From a repo clone without installing, prefix both with `uv run`.)
+(From a repo clone without installing, prefix these with `uv run`.)
 
-Both commands accept a path to a single `SKILL.md` file, a single skill
+All three commands accept a path to a single `SKILL.md` file, a single skill
 directory, or a directory containing many skills (searched recursively).
 
 ## Commands
@@ -78,12 +79,47 @@ skipped, not failed.
 | `--format terminal\|json` | `terminal` | Output format. |
 | `--provider heuristic\|llm` | `heuristic` | Evaluator to use (see below). |
 
-### Exit codes (both commands)
+### `skillseal conflicts <path>`
+
+Scans every skill under `path` *together* rather than one at a time, and
+flags two things `check`/`test` can't see in isolation:
+
+- **Duplicate names** — two skills declaring the same frontmatter `name`
+  (usually a copy-paste leftover).
+- **Routing overlap** — two skills whose vocabulary (name + description +
+  `keywords:`) is similar enough that an agent likely can't reliably tell
+  them apart, using the same term-matching `HeuristicRoutingEvaluator` uses
+  for routing tests, compared pairwise via Jaccard similarity.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--threshold <float>` | `0.5` | Minimum vocabulary similarity (Jaccard) to flag as overlap. |
+| `--format terminal\|json` | `terminal` | Output format. |
+
+```
+$ uv run skillseal conflicts examples/conflicting-skills
+
+Duplicate names
+
+✗ "alpha-reviewer" used by 2 skills:
+  - examples/conflicting-skills/alpha-reviewer/SKILL.md
+  - examples/conflicting-skills/alpha-reviewer-2/SKILL.md
+
+Routing overlap
+
+✗ "alpha-reviewer" and "beta-reviewer"
+  examples/conflicting-skills/alpha-reviewer/SKILL.md
+  examples/conflicting-skills/beta-reviewer/SKILL.md
+  Similarity: 53% (threshold: 50%)
+  Shared terms: bug, code, potential, quality, review, reviewer, skill, style
+```
+
+### Exit codes (all commands)
 
 | Code | Meaning |
 |---|---|
 | `0` | Clean, or the gate passed. |
-| `1` | Gate failed (`--fail-on` / `--threshold` not met). |
+| `1` | Gate failed (`--fail-on` / `--threshold` not met, or a conflict was found). |
 | `2` | Usage or config error — bad path, no `SKILL.md` found, malformed `skillseal.yaml`. |
 
 A typo'd path can never silently report success: exit `2` is reserved for
@@ -266,6 +302,7 @@ src/skillseal/
 ├── parser.py            # discover_skills(), parse_skill() — never raises on bad YAML
 ├── linter.py             # ties parser + rules + scoring together
 ├── scoring.py             # deterministic 0-100 scoring
+├── conflicts.py            # cross-skill: duplicate names, routing-overlap (Jaccard)
 ├── rules/
 │   ├── base.py             # Rule protocol, FuncRule, registry, text helpers
 │   ├── metadata.py          # SPECIFICATION rules
@@ -278,7 +315,7 @@ src/skillseal/
 ├── reporters/
 │   ├── terminal.py             # Rich terminal output
 │   └── json_reporter.py         # stable JSON schema
-└── cli.py                        # typer app: check, test
+└── cli.py                        # typer app: check, test, conflicts
 ```
 
 A `Rule` is `id`, `category`, `severity`, `description`, and
@@ -316,9 +353,6 @@ implementations:
 
 Near-term, likely next:
 
-- Cross-skill conflict detection (duplicate names, and routing-heuristic
-  overlap between two different skills in the same directory — reusing the
-  existing `HeuristicRoutingEvaluator` rather than a new engine)
 - A config file (`skillseal.toml`) to override thresholds (size, description
   length, etc.) without forking a rule
 
