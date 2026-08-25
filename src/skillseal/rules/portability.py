@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 
+from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import Draft, FuncRule, Rule
 
@@ -48,14 +49,14 @@ def _text(skill: Skill) -> str:
     return f"{skill.body}\n{skill.description}\n{compatibility_text}"
 
 
-def _declared_compatibility(skill: Skill) -> list[Draft]:
+def _declared_compatibility(skill: Skill, config: Config) -> list[Draft]:
     compatibility = skill.frontmatter.get("compatibility")
     if not isinstance(compatibility, str) or not compatibility.strip():
         return []
     return [Draft(message="Skill declares compatibility requirements.", detail=compatibility)]
 
 
-def _requires_tools(skill: Skill) -> list[Draft]:
+def _requires_tools(skill: Skill, config: Config) -> list[Draft]:
     text = _text(skill)
     found = [tool for tool, pattern in _TOOL_PATTERNS.items() if pattern.search(text)]
     if not found:
@@ -65,13 +66,13 @@ def _requires_tools(skill: Skill) -> list[Draft]:
     ]
 
 
-def _requires_network(skill: Skill) -> list[Draft]:
+def _requires_network(skill: Skill, config: Config) -> list[Draft]:
     if not _NETWORK_RE.search(_text(skill)):
         return []
     return [Draft(message="Skill appears to require network access.")]
 
 
-def _absolute_paths(skill: Skill) -> list[Draft]:
+def _absolute_paths(skill: Skill, config: Config) -> list[Draft]:
     matches = _ABS_PATH_RE.findall(skill.body)
     if not matches:
         return []
@@ -85,7 +86,7 @@ def _absolute_paths(skill: Skill) -> list[Draft]:
     ]
 
 
-def _os_specific(skill: Skill) -> list[Draft]:
+def _os_specific(skill: Skill, config: Config) -> list[Draft]:
     matches = {m.group(0) for m in _OS_SPECIFIC_RE.finditer(skill.body)}
     if not matches:
         return []

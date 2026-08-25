@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 
+from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import (
     Draft,
@@ -15,12 +16,10 @@ from skillseal.rules.base import (
     split_sections,
 )
 
-# agentskills.io recommends the SKILL.md body stay under 5000 tokens / 500 lines
+# Defaults for the four thresholds below come from the agentskills.io spec
 # ("Instructions (<5000 tokens recommended)... Keep your main SKILL.md under 500 lines.")
-_TOKEN_WARN_THRESHOLD = 5000
-_MAX_LINES = 500
-_LONG_SECTION_WORD_THRESHOLD = 800
-_MAX_TOP_LEVEL_SECTIONS = 8
+# or our own judgment; all are overridable via skillseal.toml (see config.py) except
+# this one, which is an internal implementation detail, not worth exposing.
 _MIN_REPEATED_LINE_LEN = 15
 
 _VAGUE_PHRASES = [
@@ -42,32 +41,32 @@ _WHEN_CUE_RE = re.compile(
 _HEADING_RE = re.compile(r"^##[ \t]+", re.MULTILINE)
 
 
-def _skill_too_large(skill: Skill) -> list[Draft]:
+def _skill_too_large(skill: Skill, config: Config) -> list[Draft]:
     tokens = estimate_tokens(skill.raw_text)
-    if tokens <= _TOKEN_WARN_THRESHOLD:
+    if tokens <= config.token_warn_threshold:
         return []
     return [
         Draft(
             message="SKILL.md exceeds the recommended body size (agentskills.io: <5000 tokens).",
-            detail=f"~{tokens:,} estimated tokens (threshold: {_TOKEN_WARN_THRESHOLD:,})",
+            detail=f"~{tokens:,} estimated tokens (threshold: {config.token_warn_threshold:,})",
         )
     ]
 
 
-def _too_many_lines(skill: Skill) -> list[Draft]:
+def _too_many_lines(skill: Skill, config: Config) -> list[Draft]:
     line_count = skill.raw_text.count("\n") + 1
-    if line_count <= _MAX_LINES:
+    if line_count <= config.max_lines:
         return []
     return [
         Draft(
             message="SKILL.md exceeds the recommended line count (agentskills.io: "
             "under 500 lines) — consider moving detail to a references/ file.",
-            detail=f"{line_count} lines (threshold: {_MAX_LINES})",
+            detail=f"{line_count} lines (threshold: {config.max_lines})",
         )
     ]
 
 
-def _repeated_instruction_lines(skill: Skill) -> list[Draft]:
+def _repeated_instruction_lines(skill: Skill, config: Config) -> list[Draft]:
     lines = [line.strip() for line in skill.body.splitlines()]
     candidates = [
         line for line in lines if len(line) >= _MIN_REPEATED_LINE_LEN and not line.startswith("#")
@@ -87,11 +86,11 @@ def _repeated_instruction_lines(skill: Skill) -> list[Draft]:
     ]
 
 
-def _long_sections(skill: Skill) -> list[Draft]:
+def _long_sections(skill: Skill, config: Config) -> list[Draft]:
     offenders = []
     for heading, text in split_sections(skill.body):
         word_count = len(text.split())
-        if word_count > _LONG_SECTION_WORD_THRESHOLD:
+        if word_count > config.long_section_word_threshold:
             offenders.append((heading or "(untitled)", word_count))
     if not offenders:
         return []
@@ -99,7 +98,7 @@ def _long_sections(skill: Skill) -> list[Draft]:
     return [Draft(message="One or more sections are excessively long.", detail=detail)]
 
 
-def _vague_description(skill: Skill) -> list[Draft]:
+def _vague_description(skill: Skill, config: Config) -> list[Draft]:
     normalized = " ".join(skill.description.casefold().split())
     for phrase in _VAGUE_PHRASES:
         if phrase in normalized:
@@ -112,7 +111,7 @@ def _vague_description(skill: Skill) -> list[Draft]:
     return []
 
 
-def _description_lacks_when_to_use(skill: Skill) -> list[Draft]:
+def _description_lacks_when_to_use(skill: Skill, config: Config) -> list[Draft]:
     if not skill.description:
         return []
     if _WHEN_CUE_RE.search(skill.description):
@@ -125,20 +124,20 @@ def _description_lacks_when_to_use(skill: Skill) -> list[Draft]:
     ]
 
 
-def _too_many_responsibilities(skill: Skill) -> list[Draft]:
+def _too_many_responsibilities(skill: Skill, config: Config) -> list[Draft]:
     count = len(_HEADING_RE.findall(skill.body))
-    if count <= _MAX_TOP_LEVEL_SECTIONS:
+    if count <= config.max_top_level_sections:
         return []
     return [
         Draft(
             message="Skill covers many distinct sections, which may signal too many "
             "responsibilities.",
-            detail=f"{count} top-level sections (threshold: {_MAX_TOP_LEVEL_SECTIONS})",
+            detail=f"{count} top-level sections (threshold: {config.max_top_level_sections})",
         )
     ]
 
 
-def _dangling_file_references(skill: Skill) -> list[Draft]:
+def _dangling_file_references(skill: Skill, config: Config) -> list[Draft]:
     missing = []
     for target in local_file_targets(skill.body):
         if not (skill.dir / target).exists():
