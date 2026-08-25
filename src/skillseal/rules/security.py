@@ -8,6 +8,7 @@ can't know real intent or execution context.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
@@ -46,6 +47,95 @@ def _matches_in_code(skill: Skill, pattern: re.Pattern[str]) -> list[str]:
 
 def _matches_in_body(skill: Skill, pattern: re.Pattern[str]) -> list[str]:
     return [m.group(0) for m in pattern.finditer(skill.body)]
+
+
+# --- bundled files (scripts/, references/, assets/) -----------------------
+#
+# SKILL.md is the documentation; scripts/ is the payload an agent actually
+# runs. The agentskills.io spec explicitly sanctions scripts/ for executable
+# code, so it needs the same scanning SKILL.md's own code blocks get.
+# ponytail: no full binary/archive introspection, just a text-file regex
+# sweep with size/count caps — upgrade to per-pattern bundled-* rule ids if
+# --ignore granularity for this ever matters.
+
+_BUNDLED_DIRS = ("scripts", "references", "assets")
+_MAX_BUNDLED_FILE_BYTES = 500_000
+_MAX_BUNDLED_TOTAL_BYTES = 2_000_000
+_MAX_BUNDLED_FILES = 200
+
+_BUNDLED_ERROR_PATTERNS = {"rm-rf": _RM_RF_RE, "pipe-to-shell": _PIPE_SHELL_RE}
+_BUNDLED_WARNING_PATTERNS = {
+    "eval-exec": _EVAL_EXEC_RE,
+    "sudo-usage": _SUDO_RE,
+    "chmod-777": _CHMOD_777_RE,
+    "secret-file-read": _SECRET_FILE_RE,
+    "interpolated-shell-input": _INTERP_SHELL_RE,
+}
+
+
+def _iter_bundled_files(skill: Skill) -> list[Path]:
+    files: list[Path] = []
+    total_bytes = 0
+    for sub in _BUNDLED_DIRS:
+        base = skill.dir / sub
+        if not base.is_dir():
+            continue
+        for candidate in sorted(base.rglob("*")):
+            if len(files) >= _MAX_BUNDLED_FILES or total_bytes >= _MAX_BUNDLED_TOTAL_BYTES:
+                break
+            if not candidate.is_file():
+                continue
+            try:
+                size = candidate.stat().st_size
+            except OSError:
+                continue
+            if size == 0 or size > _MAX_BUNDLED_FILE_BYTES:
+                continue
+            files.append(candidate)
+            total_bytes += size
+    return files
+
+
+def _read_bundled_text(path: Path) -> str | None:
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return None
+    if b"\x00" in raw:
+        return None  # binary; not ours to scan
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def _scan_bundled(skill: Skill, patterns: dict[str, re.Pattern[str]]) -> list[str]:
+    hits: list[str] = []
+    for path in _iter_bundled_files(skill):
+        text = _read_bundled_text(path)
+        if text is None:
+            continue
+        rel = path.relative_to(skill.dir)
+        for label, pattern in patterns.items():
+            for m in pattern.finditer(text):
+                hits.append(f"{rel} [{label}]: {m.group(0).strip()[:60]}")
+    return hits
+
+
+def _bundled_dangerous_command(skill: Skill, config: Config) -> list[Draft]:
+    return _aggregate(
+        _scan_bundled(skill, _BUNDLED_ERROR_PATTERNS),
+        "Potential risk: dangerous command found in a bundled file "
+        "(scripts/references/assets), not just SKILL.md itself.",
+    )
+
+
+def _bundled_risky_command(skill: Skill, config: Config) -> list[Draft]:
+    return _aggregate(
+        _scan_bundled(skill, _BUNDLED_WARNING_PATTERNS),
+        "Potential risk: risky command found in a bundled file "
+        "(scripts/references/assets), not just SKILL.md itself.",
+    )
 
 
 def _rm_rf(skill: Skill, config: Config) -> list[Draft]:
@@ -196,5 +286,19 @@ RULES: list[Rule] = [
         severity=Severity.ERROR,
         description="Flags file references that resolve outside the skill's own directory.",
         fn=_path_traversal,
+    ),
+    FuncRule(
+        id="bundled-dangerous-command",
+        category=Category.SECURITY,
+        severity=Severity.ERROR,
+        description="Flags rm -rf / pipe-to-shell patterns inside bundled files.",
+        fn=_bundled_dangerous_command,
+    ),
+    FuncRule(
+        id="bundled-risky-command",
+        category=Category.SECURITY,
+        severity=Severity.WARNING,
+        description="Flags eval/exec/sudo/chmod-777/secret-read patterns inside bundled files.",
+        fn=_bundled_risky_command,
     ),
 ]
