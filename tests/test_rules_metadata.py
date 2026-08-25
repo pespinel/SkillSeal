@@ -65,6 +65,20 @@ def test_description_too_long(make_skill) -> None:
     assert "description-too-long" in _run(skill)
 
 
+def test_reserved_word_in_name(make_skill) -> None:
+    skill = make_skill(
+        name="claude-helper",
+        dir_name="claude-helper",
+        frontmatter={"name": "claude-helper", "description": "Use this when doing things."},
+    )
+    assert "reserved-word-in-name" in _run(skill)
+
+
+def test_reserved_word_not_flagged_when_absent(make_skill) -> None:
+    skill = make_skill(dir_name="my-skill", name="my-skill")
+    assert "reserved-word-in-name" not in _run(skill)
+
+
 def test_unknown_frontmatter_keys(make_skill) -> None:
     skill = make_skill(
         frontmatter={

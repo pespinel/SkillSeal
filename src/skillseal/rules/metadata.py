@@ -12,6 +12,20 @@ _KNOWN_KEYS = {"name", "description", "keywords", "license", "version", "allowed
 _MAX_NAME_LEN = 64
 _MIN_DESCRIPTION_LEN = 10
 _MAX_DESCRIPTION_LEN = 1024
+_RESERVED_WORDS = {
+    "claude",
+    "anthropic",
+    "openai",
+    "chatgpt",
+    "gpt",
+    "gemini",
+    "copilot",
+    "cursor",
+    "codex",
+}
+_RESERVED_WORD_RE = re.compile(
+    r"\b(" + "|".join(re.escape(w) for w in _RESERVED_WORDS) + r")\b", re.IGNORECASE
+)
 
 
 def _has_valid_frontmatter(skill: Skill) -> bool:
@@ -60,6 +74,21 @@ def _name_matches_directory(skill: Skill) -> list[Draft]:
         Draft(
             message="Frontmatter 'name' does not match the skill's directory name.",
             detail=f"name: {skill.name!r}, directory: {skill.dir_name!r}",
+        )
+    ]
+
+
+def _reserved_word_in_name(skill: Skill) -> list[Draft]:
+    if not _has_valid_frontmatter(skill) or not skill.name:
+        return []
+    match = _RESERVED_WORD_RE.search(skill.name)
+    if match is None:
+        return []
+    return [
+        Draft(
+            message="Name contains a reserved/vendor term, which can read as an official "
+            "or endorsed skill when it isn't.",
+            detail=f"name: {skill.name!r}, matched: {match.group(1)!r}",
         )
     ]
 
@@ -140,6 +169,13 @@ RULES: list[Rule] = [
         severity=Severity.WARNING,
         description="'name' should match the skill's directory name.",
         fn=_name_matches_directory,
+    ),
+    FuncRule(
+        id="reserved-word-in-name",
+        category=Category.SPECIFICATION,
+        severity=Severity.WARNING,
+        description="'name' should not contain a reserved vendor/agent term.",
+        fn=_reserved_word_in_name,
     ),
     FuncRule(
         id="missing-description",
