@@ -12,8 +12,7 @@ SkillSeal is a local-first, offline-first CLI that lints, scores, and
 routing-tests `SKILL.md` files, so you catch that before an agent does. It's
 deliberately scoped to what's useful today: static linting across four
 categories, deterministic (LLM-optional) routing tests, and CI-friendly exit
-codes and JSON output. No dashboard, no registry, no cloud — see
-[Roadmap](#roadmap) for what's intentionally not here yet.
+codes and JSON output. No dashboard, no registry, no cloud.
 
 ## Installation
 
@@ -146,13 +145,24 @@ Routing overlap
   Shared terms: bug, code, potential, quality, review, reviewer, skill, style
 ```
 
+### `skillseal diff <old> <new>`
+
+Compares two versions of a skill (each a `SKILL.md` file or a single-skill
+directory) and reports the score delta plus which findings appeared or got
+resolved. Exits `1` if the score dropped — useful as a "did this edit make
+the skill worse?" CI check.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--format terminal\|json` | `terminal` | Output format. |
+
 ### Exit codes (all commands)
 
 | Code | Meaning |
 |---|---|
 | `0` | Clean, or the gate passed. |
-| `1` | Gate failed (`--fail-on` / `--threshold` not met, or a conflict was found). |
-| `2` | Usage or config error — bad path, no `SKILL.md` found, malformed `skillseal.yaml`. |
+| `1` | Gate failed (`--fail-on` / `--threshold` not met, a conflict was found, or `diff` regressed). |
+| `2` | Usage or config error — bad path, no `SKILL.md` found, malformed `skillseal.yaml`/`.toml`. |
 
 A typo'd path can never silently report success: exit `2` is reserved for
 "SkillSeal couldn't even run the check," distinct from "the check ran and
@@ -362,6 +372,7 @@ src/skillseal/
 ├── scoring.py             # deterministic 0-100 scoring
 ├── config.py               # skillseal.toml: threshold overrides
 ├── conflicts.py              # cross-skill: duplicate names, routing-overlap (Jaccard)
+├── diff.py                     # score/finding delta between two versions of a skill
 ├── rules/
 │   ├── base.py             # Rule protocol, FuncRule, registry, text helpers
 │   ├── metadata.py          # SPECIFICATION rules
@@ -374,7 +385,7 @@ src/skillseal/
 ├── reporters/
 │   ├── terminal.py             # Rich terminal output
 │   └── json_reporter.py         # stable JSON schema
-└── cli.py                        # typer app: check, test, conflicts
+└── cli.py                        # typer app: check, test, conflicts, diff
 ```
 
 A `Rule` is `id`, `category`, `severity`, `description`, and
@@ -405,24 +416,10 @@ implementations:
   "security" won't match each other.
 - Token counts are a rough `len(text) // 4` estimate, not a real tokenizer.
 - No sandboxing or dynamic execution — nothing in a skill is ever run.
-- No compatibility testing against real agents (Claude Code, Codex, Gemini,
-  etc.) — see the roadmap.
+- No compatibility testing against real agents (Claude Code, Codex, Gemini, etc.).
 
-## Roadmap
-
-Documented, not implemented, on purpose — deliberately out of scope for now:
-
-- Real execution against Claude Code, Codex, Gemini, and other agents
-- A compatibility matrix across agents/environments
-- Sandboxed dynamic analysis of skill-invoked commands
-- Auto-fix for common findings
-- Version-to-version comparison for a skill
-- A GitHub App
-- A web dashboard
-- A skill registry / marketplace
-- A hosted/cloud service
-- Telemetry
-- Skill certification
+Planned work is tracked in [Issues](https://github.com/pespinel/skillseal/issues),
+not here.
 
 ## License
 

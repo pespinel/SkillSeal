@@ -51,10 +51,11 @@ src/skillseal/
 ├── scoring.py            deterministic 0-100 scoring
 ├── config.py               skillseal.toml: threshold overrides (Rule.fn takes Config now)
 ├── conflicts.py              cross-skill: duplicate names, routing-overlap (Jaccard)
+├── diff.py                     score/finding delta between two versions of a skill
 ├── rules/                    one module per category: metadata/quality/security/portability
 ├── routing/                    HeuristicRoutingEvaluator + optional LLMRoutingEvaluator
 ├── reporters/                     terminal.py (Rich) and json_reporter.py (stable schema)
-└── cli.py                           typer app: check, test, conflicts
+└── cli.py                           typer app: check, test, conflicts, diff
 ```
 
 ## Adding a new lint rule
@@ -74,8 +75,8 @@ in the matching `tests/test_rules_*.py`.
 
 - Hand-edit `uv.lock` — regenerate it with `uv lock` / `uv sync`.
 - Add a new dependency for something the stdlib or an existing dependency
-  already covers (see the Limitations/Roadmap sections in README — the
-  scope is kept deliberately small).
+  already covers (see README's Limitations section — the scope is kept
+  deliberately small; planned work lives in GitHub Issues, not the README).
 - Bump `pyproject.toml`'s `version` without also tagging a matching
   `vX.Y.Z` release (see README's Releasing section) — the release workflow
   checks they match and fails otherwise.
