@@ -1,5 +1,9 @@
 # SkillSeal
 
+[![PyPI](https://img.shields.io/pypi/v/skillseal)](https://pypi.org/project/skillseal/)
+[![CI](https://github.com/pespinel/skillseal/actions/workflows/ci.yml/badge.svg)](https://github.com/pespinel/skillseal/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Test your Agent Skills before your agents do.**
 
 `SKILL.md` files can be syntactically valid and still be bad: a vague
