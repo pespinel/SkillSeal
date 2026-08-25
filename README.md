@@ -283,3 +283,7 @@ Documented, not implemented, on purpose — this is an MVP:
 - A hosted/cloud service
 - Telemetry
 - Skill certification
+
+## License
+
+[MIT](LICENSE)
