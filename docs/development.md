@@ -69,10 +69,15 @@ release:
 2. Once CI passes on that commit, [`auto-release.yml`](https://github.com/pespinel/skillseal/blob/main/.github/workflows/auto-release.yml)
    notices `pyproject.toml`'s version has no matching git tag yet, creates
    `vX.Y.Z`, and pushes it.
-3. That same workflow invokes [`release.yml`](https://github.com/pespinel/skillseal/blob/main/.github/workflows/release.yml)
-   directly (not by relying on the tag push to re-trigger it — a tag pushed
-   with the default `GITHUB_TOKEN` doesn't trigger other workflows, so this
-   avoids that trap entirely), which builds the sdist and wheel, signs a
+3. That same workflow then dispatches [`release.yml`](https://github.com/pespinel/skillseal/blob/main/.github/workflows/release.yml)
+   via the API (`gh workflow run`, i.e. `workflow_dispatch`) — deliberately
+   *not* by relying on the tag push to re-trigger it (a tag pushed with the
+   default `GITHUB_TOKEN` doesn't trigger other workflows) and *not* via
+   `workflow_call` (PyPI Trusted Publishing
+   [explicitly rejects](https://docs.pypi.org/trusted-publishers/troubleshooting/#reusable-workflows-on-github)
+   the OIDC exchange for reusable-workflow invocations — this broke a real
+   release before landing on `workflow_dispatch` instead). `release.yml`
+   then builds the sdist and wheel, signs a
    [SLSA build provenance attestation](https://slsa.dev/), publishes to PyPI
    via [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC,
    no stored token), and creates the GitHub Release with auto-generated
