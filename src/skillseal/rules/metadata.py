@@ -8,10 +8,22 @@ from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import Draft, FuncRule, Rule
 
 _NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-_KNOWN_KEYS = {"name", "description", "keywords", "license", "version", "allowed-tools", "metadata"}
-_MAX_NAME_LEN = 64
-_MIN_DESCRIPTION_LEN = 10
-_MAX_DESCRIPTION_LEN = 1024
+# Per the agentskills.io spec: name/description/license/compatibility/metadata/allowed-tools
+# are the only recognized top-level keys. "keywords" is a SkillSeal-specific extension (not
+# spec-standard) used only by the heuristic routing evaluator — kept here so it doesn't warn.
+_KNOWN_KEYS = {
+    "name",
+    "description",
+    "license",
+    "compatibility",
+    "metadata",
+    "allowed-tools",
+    "keywords",
+}
+_MAX_NAME_LEN = 64  # agentskills.io: name must be 1-64 characters
+_MIN_DESCRIPTION_LEN = 10  # our own heuristic floor; spec only requires non-empty
+_MAX_DESCRIPTION_LEN = 1024  # agentskills.io: description must be 1-1024 characters
+_MAX_COMPATIBILITY_LEN = 500  # agentskills.io: compatibility must be 1-500 characters
 _RESERVED_WORDS = {
     "claude",
     "anthropic",
@@ -125,6 +137,20 @@ def _description_too_long(skill: Skill) -> list[Draft]:
     ]
 
 
+def _compatibility_too_long(skill: Skill) -> list[Draft]:
+    if not _has_valid_frontmatter(skill):
+        return []
+    compatibility = skill.frontmatter.get("compatibility")
+    if not isinstance(compatibility, str) or len(compatibility) <= _MAX_COMPATIBILITY_LEN:
+        return []
+    return [
+        Draft(
+            message="'compatibility' is excessively long.",
+            detail=f"{len(compatibility)} characters (max {_MAX_COMPATIBILITY_LEN})",
+        )
+    ]
+
+
 def _unknown_frontmatter_keys(skill: Skill) -> list[Draft]:
     if not _has_valid_frontmatter(skill):
         return []
@@ -197,6 +223,13 @@ RULES: list[Rule] = [
         severity=Severity.WARNING,
         description="Description should not be excessively long.",
         fn=_description_too_long,
+    ),
+    FuncRule(
+        id="compatibility-too-long",
+        category=Category.SPECIFICATION,
+        severity=Severity.WARNING,
+        description="'compatibility' should not be excessively long.",
+        fn=_compatibility_too_long,
     ),
     FuncRule(
         id="unknown-frontmatter-keys",

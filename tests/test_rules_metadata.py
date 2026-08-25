@@ -88,3 +88,38 @@ def test_unknown_frontmatter_keys(make_skill) -> None:
         }
     )
     assert "unknown-frontmatter-keys" in _run(skill)
+
+
+def test_compatibility_is_a_known_key(make_skill) -> None:
+    # per the agentskills.io spec, unlike our own former (incorrect) allowlist
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "compatibility": "Requires Python 3.12+",
+        }
+    )
+    assert "unknown-frontmatter-keys" not in _run(skill)
+
+
+def test_top_level_version_is_not_a_known_key(make_skill) -> None:
+    # the spec's own example nests custom fields under metadata:, not top-level
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "version": "1.0",
+        }
+    )
+    assert "unknown-frontmatter-keys" in _run(skill)
+
+
+def test_compatibility_too_long(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "compatibility": "x" * 501,
+        }
+    )
+    assert "compatibility-too-long" in _run(skill)
