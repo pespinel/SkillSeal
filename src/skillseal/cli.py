@@ -1,9 +1,9 @@
-"""SkillGuard CLI.
+"""SkillSeal CLI.
 
 Exit codes (both commands):
   0 = clean / gate passed
   1 = gate failed (--fail-on / --threshold not met)
-  2 = usage or config error (bad path, no SKILL.md found, malformed skillguard.yaml)
+  2 = usage or config error (bad path, no SKILL.md found, malformed skillseal.yaml)
 """
 
 from __future__ import annotations
@@ -16,17 +16,17 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-from skillguard.linter import lint_path
-from skillguard.models import Severity
-from skillguard.reporters.json_reporter import check_reports_to_json, routing_summaries_to_json
-from skillguard.reporters.terminal import render_check_reports, render_routing_summaries
-from skillguard.routing.evaluator import (
+from skillseal.linter import lint_path
+from skillseal.models import Severity
+from skillseal.reporters.json_reporter import check_reports_to_json, routing_summaries_to_json
+from skillseal.reporters.terminal import render_check_reports, render_routing_summaries
+from skillseal.routing.evaluator import (
     HeuristicRoutingEvaluator,
     LLMRoutingEvaluator,
     OpenAICompatibleProvider,
     RoutingEvaluator,
 )
-from skillguard.routing.runner import RoutingConfigError, run_routing_tests_for_path
+from skillseal.routing.runner import RoutingConfigError, run_routing_tests_for_path
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
@@ -93,7 +93,7 @@ def test_routing(
         Provider, typer.Option(help="Routing evaluator to use.")
     ] = Provider.HEURISTIC,
 ) -> None:
-    """Run routing tests (skillguard.yaml) for each skill: does it trigger when it should?"""
+    """Run routing tests (skillseal.yaml) for each skill: does it trigger when it should?"""
     if not path.exists():
         err_console.print(f"[red]Error:[/red] path not found: {path}")
         raise typer.Exit(code=2)

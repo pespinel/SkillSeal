@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from skillguard.models import Skill
+from skillseal.models import Skill
 
 _SKIP_DIRS = {".git", ".venv", "node_modules", "__pycache__"}
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*\r?\n?", re.DOTALL)

@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from skillguard.models import Category, Finding, Severity, Skill
+from skillseal.models import Category, Finding, Severity, Skill
 
 
 class Rule(Protocol):
@@ -64,7 +64,7 @@ class FuncRule:
 
 def build_registry() -> list[Rule]:
     """Import each category's rule list lazily to avoid circular imports."""
-    from skillguard.rules import metadata, portability, quality, security
+    from skillseal.rules import metadata, portability, quality, security
 
     rules: list[Rule] = []
     rules.extend(metadata.RULES)

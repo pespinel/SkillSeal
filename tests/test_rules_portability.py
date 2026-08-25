@@ -1,4 +1,4 @@
-from skillguard.rules import portability
+from skillseal.rules import portability
 
 
 def _run(skill) -> set[str]:

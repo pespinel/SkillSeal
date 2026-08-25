@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 from collections import Counter
 
-from skillguard.models import Category, Severity, Skill
-from skillguard.rules.base import (
+from skillseal.models import Category, Severity, Skill
+from skillseal.rules.base import (
     Draft,
     FuncRule,
     Rule,

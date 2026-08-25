@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from skillguard.models import Skill
+from skillseal.models import Skill
 
 
 @pytest.fixture

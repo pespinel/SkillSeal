@@ -3,7 +3,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from skillguard.cli import app
+from skillseal.cli import app
 
 runner = CliRunner()
 EXAMPLES = Path(__file__).parent.parent / "examples"
@@ -64,7 +64,7 @@ def test_routing_json_format_is_valid_json() -> None:
 
 
 def test_routing_llm_provider_without_config_exits_two(monkeypatch) -> None:
-    monkeypatch.delenv("SKILLGUARD_BASE_URL", raising=False)
-    monkeypatch.delenv("SKILLGUARD_MODEL", raising=False)
+    monkeypatch.delenv("SKILLSEAL_BASE_URL", raising=False)
+    monkeypatch.delenv("SKILLSEAL_MODEL", raising=False)
     result = runner.invoke(app, ["test", str(EXAMPLES / "good-skill"), "--provider", "llm"])
     assert result.exit_code == 2

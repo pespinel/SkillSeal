@@ -20,7 +20,7 @@ declared environment dependencies are often expected, not defects.
 
 from __future__ import annotations
 
-from skillguard.models import Category, Finding, Severity, Skill, SkillReport
+from skillseal.models import Category, Finding, Severity, Skill, SkillReport
 
 _DEDUCTIONS: dict[Severity, int] = {
     Severity.ERROR: 25,

@@ -10,7 +10,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Protocol
 
-from skillguard.models import RoutingResult, Skill
+from skillseal.models import RoutingResult, Skill
 
 _WORD_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9_-]*")
 _STOPWORDS = {
@@ -224,20 +224,20 @@ class LLMRoutingEvaluator:
 class OpenAICompatibleProvider:
     """LLMProvider backed by any OpenAI-compatible /chat/completions endpoint.
 
-    Configured via SKILLGUARD_BASE_URL, SKILLGUARD_API_KEY, SKILLGUARD_MODEL.
+    Configured via SKILLSEAL_BASE_URL, SKILLSEAL_API_KEY, SKILLSEAL_MODEL.
     """
 
     def __init__(
         self, base_url: str | None = None, api_key: str | None = None, model: str | None = None
     ) -> None:
-        base_url = base_url or os.environ.get("SKILLGUARD_BASE_URL")
-        model = model or os.environ.get("SKILLGUARD_MODEL")
+        base_url = base_url or os.environ.get("SKILLSEAL_BASE_URL")
+        model = model or os.environ.get("SKILLSEAL_MODEL")
         if not base_url or not model:
             raise RuntimeError(
-                "SKILLGUARD_BASE_URL and SKILLGUARD_MODEL must be set to use the LLM evaluator."
+                "SKILLSEAL_BASE_URL and SKILLSEAL_MODEL must be set to use the LLM evaluator."
             )
         self.base_url = base_url
-        self.api_key = api_key or os.environ.get("SKILLGUARD_API_KEY")
+        self.api_key = api_key or os.environ.get("SKILLSEAL_API_KEY")
         self.model = model
 
     def complete(self, prompt: str) -> str:

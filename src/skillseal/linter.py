@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from skillguard.models import Skill, SkillReport
-from skillguard.parser import discover_skills, parse_skill
-from skillguard.rules.base import build_registry
-from skillguard.scoring import build_report
+from skillseal.models import Skill, SkillReport
+from skillseal.parser import discover_skills, parse_skill
+from skillseal.rules.base import build_registry
+from skillseal.scoring import build_report
 
 _RULES = build_registry()
 

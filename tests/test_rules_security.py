@@ -1,4 +1,4 @@
-from skillguard.rules import security
+from skillseal.rules import security
 
 
 def _run(skill) -> set[str]:

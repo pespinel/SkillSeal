@@ -1,5 +1,5 @@
-from skillguard.models import Category, Finding, Severity
-from skillguard.scoring import build_report, category_status, score_category, score_skill
+from skillseal.models import Category, Finding, Severity
+from skillseal.scoring import build_report, category_status, score_category, score_skill
 
 
 def _finding(category: Category, severity: Severity) -> Finding:

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from skillguard.parser import discover_skills, parse_skill
+from skillseal.parser import discover_skills, parse_skill
 
 GOOD_SKILL = """---
 name: my-skill

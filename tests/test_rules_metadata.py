@@ -1,4 +1,4 @@
-from skillguard.rules import metadata
+from skillseal.rules import metadata
 
 
 def _run(skill) -> set[str]:

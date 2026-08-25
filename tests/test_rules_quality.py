@@ -1,4 +1,4 @@
-from skillguard.rules import quality
+from skillseal.rules import quality
 
 
 def _run(skill) -> set[str]:

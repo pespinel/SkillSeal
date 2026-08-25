@@ -10,8 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from skillguard.models import Category, RoutingSummary, Skill, SkillReport
-from skillguard.reporters.terminal import display_path
+from skillseal.models import Category, RoutingSummary, Skill, SkillReport
+from skillseal.reporters.terminal import display_path
 
 SCHEMA_VERSION = 1
 

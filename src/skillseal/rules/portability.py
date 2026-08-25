@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import re
 
-from skillguard.models import Category, Severity, Skill
-from skillguard.rules.base import Draft, FuncRule, Rule
+from skillseal.models import Category, Severity, Skill
+from skillseal.rules.base import Draft, FuncRule, Rule
 
 _TOOL_KEYWORDS = [
     "npm",

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from skillguard.models import Category, Severity, Skill
-from skillguard.rules.base import Draft, FuncRule, Rule
+from skillseal.models import Category, Severity, Skill
+from skillseal.rules.base import Draft, FuncRule, Rule
 
 _NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _KNOWN_KEYS = {"name", "description", "keywords", "license", "version", "allowed-tools", "metadata"}

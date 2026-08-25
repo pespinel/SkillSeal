@@ -1,4 +1,4 @@
-"""Rich-based terminal output for `skillguard check` and `skillguard test`."""
+"""Rich-based terminal output for `skillseal check` and `skillseal test`."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from pathlib import Path
 
 from rich.console import Console
 
-from skillguard.models import Category, RoutingSummary, Severity, Skill, SkillReport
-from skillguard.scoring import category_status
+from skillseal.models import Category, RoutingSummary, Severity, Skill, SkillReport
+from skillseal.scoring import category_status
 
 _STATUS_COLOR = {"PASS": "green", "WARN": "yellow", "FAIL": "red"}
 _SEVERITY_TAG = {Severity.INFO: "INFO", Severity.WARNING: "WARN", Severity.ERROR: "FAIL"}
@@ -50,7 +50,7 @@ def _render_skill_report(report: SkillReport, console: Console, root: Path | Non
                 console.print(f"      [dim]{f.detail}[/dim]")
             console.print()
 
-    console.print(f"[bold]SkillGuard Score: {report.score}/100[/bold]\n")
+    console.print(f"[bold]SkillSeal Score: {report.score}/100[/bold]\n")
     for category in Category:
         console.print(f"{category.value.capitalize():<15}{report.category_scores[category]:>3}")
 

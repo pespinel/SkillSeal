@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import re
 
-from skillguard.models import Category, Severity, Skill
-from skillguard.rules.base import Draft, FuncRule, Rule, extract_code_spans
+from skillseal.models import Category, Severity, Skill
+from skillseal.rules.base import Draft, FuncRule, Rule, extract_code_spans
 
 _RM_RF_RE = re.compile(r"\brm\s+(-\w*[rR]\w*[fF]\w*|-\w*[fF]\w*[rR]\w*)\b")
 _PIPE_SHELL_RE = re.compile(r"\b(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b", re.IGNORECASE)

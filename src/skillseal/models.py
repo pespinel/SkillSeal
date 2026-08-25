@@ -66,7 +66,7 @@ class SkillReport(BaseModel):
 
 
 class RoutingConfig(BaseModel):
-    """Parsed skillguard.yaml routing test cases."""
+    """Parsed skillseal.yaml routing test cases."""
 
     version: int = 1
     should_trigger: list[str] = Field(default_factory=list)

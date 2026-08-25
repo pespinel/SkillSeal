@@ -33,21 +33,21 @@ jobs:
       # both, so the pipeline asserts that failure rather than requiring it to
       # (accidentally) pass.
       - name: Check good-skill example (expected to pass)
-        run: uv run skillguard check examples/good-skill --fail-on error
+        run: uv run skillseal check examples/good-skill --fail-on error
 
       - name: Check bad-skill example (expected to fail the gate)
         run: |
-          if uv run skillguard check examples/bad-skill --fail-on error; then
+          if uv run skillseal check examples/bad-skill --fail-on error; then
             echo "expected examples/bad-skill to fail the --fail-on error gate" >&2
             exit 1
           fi
 
       - name: Routing tests for good-skill example (expected to pass)
-        run: uv run skillguard test examples/good-skill
+        run: uv run skillseal test examples/good-skill
 
       - name: Routing tests for bad-skill example (expected to fail the threshold)
         run: |
-          if uv run skillguard test examples/bad-skill; then
+          if uv run skillseal test examples/bad-skill; then
             echo "expected examples/bad-skill routing tests to fail the threshold" >&2
             exit 1
           fi

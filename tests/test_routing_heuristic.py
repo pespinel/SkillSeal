@@ -1,4 +1,4 @@
-from skillguard.routing.evaluator import HeuristicRoutingEvaluator
+from skillseal.routing.evaluator import HeuristicRoutingEvaluator
 
 
 def test_matching_prompt_triggers(make_skill) -> None:

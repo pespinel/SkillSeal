@@ -1,4 +1,4 @@
-"""Loads skillguard.yaml and runs routing test cases against an evaluator."""
+"""Loads skillseal.yaml and runs routing test cases against an evaluator."""
 
 from __future__ import annotations
 
@@ -6,15 +6,15 @@ from pathlib import Path
 
 import yaml
 
-from skillguard.models import RoutingCaseResult, RoutingConfig, RoutingSummary, Skill
-from skillguard.parser import discover_skills, parse_skill
-from skillguard.routing.evaluator import RoutingEvaluator
+from skillseal.models import RoutingCaseResult, RoutingConfig, RoutingSummary, Skill
+from skillseal.parser import discover_skills, parse_skill
+from skillseal.routing.evaluator import RoutingEvaluator
 
-CONFIG_FILENAME = "skillguard.yaml"
+CONFIG_FILENAME = "skillseal.yaml"
 
 
 class RoutingConfigError(Exception):
-    """Raised for a malformed skillguard.yaml. Callers should treat this as a usage error."""
+    """Raised for a malformed skillseal.yaml. Callers should treat this as a usage error."""
 
 
 def load_routing_config(skill_dir: Path) -> RoutingConfig | None:
@@ -53,7 +53,7 @@ def run_routing_tests(
             skill_name=skill.name,
             threshold=threshold,
             skipped=True,
-            skip_reason="No routing test cases defined in skillguard.yaml.",
+            skip_reason="No routing test cases defined in skillseal.yaml.",
         )
 
     results = []

@@ -1,4 +1,4 @@
-from skillguard.rules.base import build_registry
+from skillseal.rules.base import build_registry
 
 
 def test_all_rule_ids_are_unique() -> None:

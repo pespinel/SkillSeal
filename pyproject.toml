@@ -1,5 +1,5 @@
 [project]
-name = "skillguard"
+name = "skillseal"
 version = "0.1.0"
 description = "Lint, score, and routing-test Agent Skills (SKILL.md) before your agents do."
 readme = "README.md"
@@ -13,14 +13,14 @@ dependencies = [
 ]
 
 [project.scripts]
-skillguard = "skillguard.cli:app"
+skillseal = "skillseal.cli:app"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/skillguard"]
+packages = ["src/skillseal"]
 
 [dependency-groups]
 dev = [

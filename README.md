@@ -1,4 +1,4 @@
-# SkillGuard
+# SkillSeal
 
 **Test your Agent Skills before your agents do.**
 
@@ -8,7 +8,7 @@ a `curl | sh` buried in a code block, a hardcoded `/Users/you/...` path that
 only works on your machine. None of that shows up until an agent picks the
 wrong skill, or picks the right one and runs something it shouldn't.
 
-SkillGuard is a local-first, offline-first CLI that lints, scores, and
+SkillSeal is a local-first, offline-first CLI that lints, scores, and
 routing-tests `SKILL.md` files, so you catch that before an agent does. It's
 deliberately scoped to what's useful today: static linting across four
 categories, deterministic (LLM-optional) routing tests, and CI-friendly exit
@@ -21,22 +21,22 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone <this-repo>
-cd skillguard
+cd skillseal
 uv sync
 ```
 
-Run it directly with `uv run skillguard ...`, or install it as a tool:
+Run it directly with `uv run skillseal ...`, or install it as a tool:
 
 ```bash
 uv tool install .
-skillguard --help
+skillseal --help
 ```
 
 ## Quickstart
 
 ```bash
-uv run skillguard check examples
-uv run skillguard test examples
+uv run skillseal check examples
+uv run skillseal test examples
 ```
 
 Both commands accept a path to a single `SKILL.md` file, a single skill
@@ -44,7 +44,7 @@ directory, or a directory containing many skills (searched recursively).
 
 ## Commands
 
-### `skillguard check <path>`
+### `skillseal check <path>`
 
 Runs every rule (SPECIFICATION, QUALITY, SECURITY, PORTABILITY) against each
 discovered skill and prints a per-skill report with a 0-100 score.
@@ -54,11 +54,11 @@ discovered skill and prints a per-skill report with a 0-100 score.
 | `--format terminal\|json` | `terminal` | Output format. |
 | `--fail-on warning\|error` | `error` | Minimum finding severity that fails the gate. |
 
-### `skillguard test <path>`
+### `skillseal test <path>`
 
-Runs the routing test cases declared in each skill's `skillguard.yaml`
+Runs the routing test cases declared in each skill's `skillseal.yaml`
 against a `RoutingEvaluator`, and reports accuracy against `should_trigger`
-and `should_not_trigger` prompts. Skills without a `skillguard.yaml` are
+and `should_not_trigger` prompts. Skills without a `skillseal.yaml` are
 skipped, not failed.
 
 | Flag | Default | Meaning |
@@ -73,16 +73,16 @@ skipped, not failed.
 |---|---|
 | `0` | Clean, or the gate passed. |
 | `1` | Gate failed (`--fail-on` / `--threshold` not met). |
-| `2` | Usage or config error — bad path, no `SKILL.md` found, malformed `skillguard.yaml`. |
+| `2` | Usage or config error — bad path, no `SKILL.md` found, malformed `skillseal.yaml`. |
 
 A typo'd path can never silently report success: exit `2` is reserved for
-"SkillGuard couldn't even run the check," distinct from "the check ran and
+"SkillSeal couldn't even run the check," distinct from "the check ran and
 found problems" (exit `1`).
 
 ## Example output
 
 ```
-$ uv run skillguard check examples/bad-skill
+$ uv run skillseal check examples/bad-skill
 
 examples/bad-skill/SKILL.md
 
@@ -115,7 +115,7 @@ WARN  absolute-path
 
   ... (more findings omitted for brevity — run it yourself to see the rest)
 
-SkillGuard Score: 68/100
+SkillSeal Score: 68/100
 
 Specification   90
 Quality         60
@@ -124,7 +124,7 @@ Portability     90
 ```
 
 ```
-$ uv run skillguard test examples/bad-skill
+$ uv run skillseal test examples/bad-skill
 
 helper
 
@@ -142,9 +142,9 @@ Failures:
   Matched terms: help
 ```
 
-## `skillguard.yaml` format
+## `skillseal.yaml` format
 
-Place a `skillguard.yaml` next to a `SKILL.md` to define its routing tests:
+Place a `skillseal.yaml` next to a `SKILL.md` to define its routing tests:
 
 ```yaml
 version: 1
@@ -159,7 +159,7 @@ routing:
     - "Explain Kubernetes"
 ```
 
-- A missing `skillguard.yaml` means that skill is **skipped**, not failed.
+- A missing `skillseal.yaml` means that skill is **skipped**, not failed.
 - Empty `should_trigger`/`should_not_trigger` lists are skipped too (no 0/0
   false pass or divide-by-zero).
 - Malformed YAML is a usage error (exit `2`), not a crash.
@@ -168,10 +168,10 @@ routing:
 
 ```yaml
 - name: Check Agent Skills
-  run: uv run skillguard check ./skills --fail-on error
+  run: uv run skillseal check ./skills --fail-on error
 
 - name: Test Agent Skill Routing
-  run: uv run skillguard test ./skills
+  run: uv run skillseal test ./skills
 ```
 
 This repo's own [`.github/workflows/ci.yml`](.github/workflows/ci.yml) does
@@ -217,7 +217,7 @@ The total is a weighted sum of the four category scores:
 ## Architecture
 
 ```
-src/skillguard/
+src/skillseal/
 ├── models.py           # pydantic models: Skill, Finding, SkillReport, routing models
 ├── parser.py            # discover_skills(), parse_skill() — never raises on bad YAML
 ├── linter.py             # ties parser + rules + scoring together
@@ -230,7 +230,7 @@ src/skillguard/
 │   └── portability.py         # PORTABILITY rules
 ├── routing/
 │   ├── evaluator.py           # HeuristicRoutingEvaluator, LLMRoutingEvaluator, LLMProvider
-│   └── runner.py               # loads skillguard.yaml, runs cases
+│   └── runner.py               # loads skillseal.yaml, runs cases
 ├── reporters/
 │   ├── terminal.py             # Rich terminal output
 │   └── json_reporter.py         # stable JSON schema
@@ -252,8 +252,8 @@ implementations:
 - **`LLMRoutingEvaluator`**: delegates the trigger/no-trigger decision to an
   `LLMProvider` (`complete(prompt) -> str`). `OpenAICompatibleProvider`
   implements this against any OpenAI-compatible `/chat/completions` endpoint,
-  configured via `SKILLGUARD_BASE_URL`, `SKILLGUARD_API_KEY`, and
-  `SKILLGUARD_MODEL`. Use `--provider llm` to opt in — it's never required.
+  configured via `SKILLSEAL_BASE_URL`, `SKILLSEAL_API_KEY`, and
+  `SKILLSEAL_MODEL`. Use `--provider llm` to opt in — it's never required.
 
 ## Limitations
 

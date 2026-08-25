@@ -1,11 +1,11 @@
-from skillguard.models import Category, RoutingCaseResult, RoutingSummary, Severity
-from skillguard.reporters.json_reporter import check_reports_to_json, routing_summaries_to_json
-from skillguard.scoring import build_report
+from skillseal.models import Category, RoutingCaseResult, RoutingSummary, Severity
+from skillseal.reporters.json_reporter import check_reports_to_json, routing_summaries_to_json
+from skillseal.scoring import build_report
 
 
 def test_check_reports_to_json_schema(make_skill) -> None:
     skill = make_skill()
-    from skillguard.models import Finding
+    from skillseal.models import Finding
 
     finding = Finding(
         id="test-id", category=Category.SECURITY, severity=Severity.WARNING, message="msg"
