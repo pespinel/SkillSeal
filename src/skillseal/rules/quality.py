@@ -12,7 +12,9 @@ from skillseal.rules.base import (
     FuncRule,
     Rule,
     estimate_tokens,
+    frontmatter_key_line,
     local_file_targets,
+    offset_to_line,
     split_sections,
 )
 
@@ -67,11 +69,16 @@ def _too_many_lines(skill: Skill, config: Config) -> list[Draft]:
 
 
 def _repeated_instruction_lines(skill: Skill, config: Config) -> list[Draft]:
-    lines = [line.strip() for line in skill.body.splitlines()]
-    candidates = [
-        line for line in lines if len(line) >= _MIN_REPEATED_LINE_LEN and not line.startswith("#")
-    ]
-    counts = Counter(candidates)
+    counts: Counter[str] = Counter()
+    first_offset: dict[str, int] = {}
+    offset = 0
+    for raw_line in skill.body.splitlines(keepends=True):
+        stripped = raw_line.strip()
+        if len(stripped) >= _MIN_REPEATED_LINE_LEN and not stripped.startswith("#"):
+            counts[stripped] += 1
+            first_offset.setdefault(stripped, offset)
+        offset += len(raw_line)
+
     repeated = {line: n for line, n in counts.items() if n > 1}
     if not repeated:
         return []
@@ -82,20 +89,22 @@ def _repeated_instruction_lines(skill: Skill, config: Config) -> list[Draft]:
             message="SKILL.md repeats instruction lines verbatim.",
             detail=f"{len(repeated)} line(s) repeated ({total_extra} extra occurrences), "
             f'e.g. "{sample[:80]}"',
+            line=offset_to_line(skill, first_offset[sample]),
         )
     ]
 
 
 def _long_sections(skill: Skill, config: Config) -> list[Draft]:
     offenders = []
-    for heading, text in split_sections(skill.body):
+    for heading, text, offset in split_sections(skill.body):
         word_count = len(text.split())
         if word_count > config.long_section_word_threshold:
-            offenders.append((heading or "(untitled)", word_count))
+            offenders.append((heading or "(untitled)", word_count, offset))
     if not offenders:
         return []
-    detail = ", ".join(f"{h!r} (~{w} words)" for h, w in offenders)
-    return [Draft(message="One or more sections are excessively long.", detail=detail)]
+    detail = ", ".join(f"{h!r} (~{w} words)" for h, w, _ in offenders)
+    line = offset_to_line(skill, offenders[0][2])
+    return [Draft(message="One or more sections are excessively long.", detail=detail, line=line)]
 
 
 def _vague_description(skill: Skill, config: Config) -> list[Draft]:
@@ -106,6 +115,7 @@ def _vague_description(skill: Skill, config: Config) -> list[Draft]:
                 Draft(
                     message="Description may not provide enough information for reliable routing.",
                     detail=f'matched vague phrase: "{phrase}"',
+                    line=frontmatter_key_line(skill, "description"),
                 )
             ]
     return []
@@ -120,6 +130,7 @@ def _description_lacks_when_to_use(skill: Skill, config: Config) -> list[Draft]:
         Draft(
             message="Description does not clearly state when the skill should be used.",
             detail="Consider phrasing like 'Use this when ...' so routing can rely on it.",
+            line=frontmatter_key_line(skill, "description"),
         )
     ]
 
@@ -139,15 +150,16 @@ def _too_many_responsibilities(skill: Skill, config: Config) -> list[Draft]:
 
 def _dangling_file_references(skill: Skill, config: Config) -> list[Draft]:
     missing = []
-    for target in local_file_targets(skill.body):
+    for target, offset in local_file_targets(skill.body):
         if not (skill.dir / target).exists():
-            missing.append(target)
+            missing.append((target, offset))
     if not missing:
         return []
     return [
         Draft(
             message="Skill references local files that don't exist in its directory.",
-            detail=", ".join(missing),
+            detail=", ".join(target for target, _ in missing),
+            line=offset_to_line(skill, missing[0][1]),
         )
     ]
 

@@ -64,10 +64,12 @@ def parse_skill(path: Path) -> Skill:
         )
 
     body = raw_text[match.end() :]
+    frontmatter_text = match.group(1)
     frontmatter: dict[str, object] = {}
     frontmatter_error: str | None = None
+    frontmatter_error_line: int | None = None
     try:
-        loaded = yaml.safe_load(match.group(1))
+        loaded = yaml.safe_load(frontmatter_text)
         if loaded is None:
             loaded = {}
         if not isinstance(loaded, dict):
@@ -76,6 +78,10 @@ def parse_skill(path: Path) -> Skill:
             frontmatter = loaded
     except yaml.YAMLError as exc:
         frontmatter_error = str(exc)
+        mark = getattr(exc, "problem_mark", None)
+        # mark.line is 0-indexed within frontmatter_text; +1 for 1-indexing, +1
+        # because frontmatter_text's own line 1 is file line 2 (after the '---').
+        frontmatter_error_line = mark.line + 2 if mark is not None else None
 
     name = ""
     description = ""
@@ -95,4 +101,6 @@ def parse_skill(path: Path) -> Skill:
         dir=path.parent,
         frontmatter_error=frontmatter_error,
         frontmatter_error_kind="invalid-frontmatter" if frontmatter_error is not None else None,
+        frontmatter_text=frontmatter_text,
+        frontmatter_error_line=frontmatter_error_line,
     )

@@ -20,7 +20,11 @@ def make_skill(tmp_path: Path):
         skill_dir.mkdir(exist_ok=True)
         path = skill_dir / "SKILL.md"
         fm = frontmatter if frontmatter is not None else {"name": name, "description": description}
-        raw_text = f"---\nname: {name}\ndescription: {description}\n---\n{body}"
+        # Built from `fm` (not hardcoded to name/description) so frontmatter_text
+        # stays positionally consistent with whatever a test overrides — line-number
+        # lookups (frontmatter_key_line) rely on this actually matching.
+        frontmatter_lines = "".join(f"{k}: {v}\n" for k, v in fm.items())
+        raw_text = f"---\n{frontmatter_lines}---\n{body}"
         path.write_text(raw_text)
         return Skill(
             name=name if frontmatter_error is None else "",
@@ -36,6 +40,7 @@ def make_skill(tmp_path: Path):
                 if frontmatter_error_kind is not None
                 else ("invalid-frontmatter" if frontmatter_error is not None else None)
             ),
+            frontmatter_text=frontmatter_lines if frontmatter_error is None else "",
         )
 
     return _make

@@ -6,7 +6,7 @@ import re
 
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
-from skillseal.rules.base import Draft, FuncRule, Rule
+from skillseal.rules.base import Draft, FuncRule, Rule, frontmatter_key_line
 
 _NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 # Per the agentskills.io spec: name/description/license/compatibility/metadata/allowed-tools
@@ -52,7 +52,7 @@ def _has_valid_frontmatter(skill: Skill) -> bool:
 def _missing_frontmatter(skill: Skill, config: Config) -> list[Draft]:
     if skill.frontmatter_error_kind != "missing-frontmatter":
         return []
-    return [Draft(message="No frontmatter block found.", detail=skill.frontmatter_error)]
+    return [Draft(message="No frontmatter block found.", detail=skill.frontmatter_error, line=1)]
 
 
 def _frontmatter_not_at_start(skill: Skill, config: Config) -> list[Draft]:
@@ -63,6 +63,7 @@ def _frontmatter_not_at_start(skill: Skill, config: Config) -> list[Draft]:
             message="Frontmatter block exists but isn't at the very start of the file.",
             detail="Check for a leading blank line, whitespace, or invisible character "
             "before the opening '---'.",
+            line=1,
         )
     ]
 
@@ -70,19 +71,30 @@ def _frontmatter_not_at_start(skill: Skill, config: Config) -> list[Draft]:
 def _invalid_frontmatter(skill: Skill, config: Config) -> list[Draft]:
     if skill.frontmatter_error_kind != "invalid-frontmatter":
         return []
-    return [Draft(message="Frontmatter YAML is invalid.", detail=skill.frontmatter_error)]
+    return [
+        Draft(
+            message="Frontmatter YAML is invalid.",
+            detail=skill.frontmatter_error,
+            line=skill.frontmatter_error_line or 1,
+        )
+    ]
 
 
 def _missing_name(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or "name" in skill.frontmatter:
         return []
-    return [Draft(message="Frontmatter is missing required field 'name'.")]
+    return [
+        Draft(
+            message="Frontmatter is missing required field 'name'.",
+            line=frontmatter_key_line(skill, "name"),
+        )
+    ]
 
 
 def _empty_name(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or "name" not in skill.frontmatter or skill.name:
         return []
-    return [Draft(message="'name' is present but empty.")]
+    return [Draft(message="'name' is present but empty.", line=frontmatter_key_line(skill, "name"))]
 
 
 def _name_format(skill: Skill, config: Config) -> list[Draft]:
@@ -95,6 +107,7 @@ def _name_format(skill: Skill, config: Config) -> list[Draft]:
             message=f"Name should be lowercase, hyphen-separated, and at most "
             f"{_MAX_NAME_LEN} characters.",
             detail=f"name: {skill.name!r}",
+            line=frontmatter_key_line(skill, "name"),
         )
     ]
 
@@ -108,6 +121,7 @@ def _name_matches_directory(skill: Skill, config: Config) -> list[Draft]:
         Draft(
             message="Frontmatter 'name' does not match the skill's directory name.",
             detail=f"name: {skill.name!r}, directory: {skill.dir_name!r}",
+            line=frontmatter_key_line(skill, "name"),
         )
     ]
 
@@ -123,6 +137,7 @@ def _reserved_word_in_name(skill: Skill, config: Config) -> list[Draft]:
             message="Name contains a reserved/vendor term, which can read as an official "
             "or endorsed skill when it isn't.",
             detail=f"name: {skill.name!r}, matched: {match.group(1)!r}",
+            line=frontmatter_key_line(skill, "name"),
         )
     ]
 
@@ -130,7 +145,12 @@ def _reserved_word_in_name(skill: Skill, config: Config) -> list[Draft]:
 def _missing_description(skill: Skill, config: Config) -> list[Draft]:
     if not _has_valid_frontmatter(skill) or "description" in skill.frontmatter:
         return []
-    return [Draft(message="Frontmatter is missing required field 'description'.")]
+    return [
+        Draft(
+            message="Frontmatter is missing required field 'description'.",
+            line=frontmatter_key_line(skill, "description"),
+        )
+    ]
 
 
 def _description_too_short(skill: Skill, config: Config) -> list[Draft]:
@@ -142,6 +162,7 @@ def _description_too_short(skill: Skill, config: Config) -> list[Draft]:
         Draft(
             message="Description is excessively short to provide reliable routing.",
             detail=f"{len(skill.description)} characters",
+            line=frontmatter_key_line(skill, "description"),
         )
     ]
 
@@ -155,6 +176,7 @@ def _description_too_long(skill: Skill, config: Config) -> list[Draft]:
         Draft(
             message="Description is excessively long.",
             detail=f"{len(skill.description)} characters",
+            line=frontmatter_key_line(skill, "description"),
         )
     ]
 
@@ -169,6 +191,7 @@ def _compatibility_too_long(skill: Skill, config: Config) -> list[Draft]:
         Draft(
             message="'compatibility' is excessively long.",
             detail=f"{len(compatibility)} characters (max {_MAX_COMPATIBILITY_LEN})",
+            line=frontmatter_key_line(skill, "compatibility"),
         )
     ]
 
@@ -179,7 +202,13 @@ def _unknown_frontmatter_keys(skill: Skill, config: Config) -> list[Draft]:
     unknown = sorted(set(skill.frontmatter) - _KNOWN_KEYS)
     if not unknown:
         return []
-    return [Draft(message="Frontmatter has unrecognized keys.", detail=", ".join(unknown))]
+    return [
+        Draft(
+            message="Frontmatter has unrecognized keys.",
+            detail=", ".join(unknown),
+            line=frontmatter_key_line(skill, unknown[0]),
+        )
+    ]
 
 
 RULES: list[Rule] = [

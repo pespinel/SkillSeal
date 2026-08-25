@@ -12,7 +12,7 @@ import re
 
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
-from skillseal.rules.base import Draft, FuncRule, Rule
+from skillseal.rules.base import Draft, FuncRule, Rule, frontmatter_key_line, offset_to_line
 
 _TOOL_KEYWORDS = [
     "npm",
@@ -53,7 +53,13 @@ def _declared_compatibility(skill: Skill, config: Config) -> list[Draft]:
     compatibility = skill.frontmatter.get("compatibility")
     if not isinstance(compatibility, str) or not compatibility.strip():
         return []
-    return [Draft(message="Skill declares compatibility requirements.", detail=compatibility)]
+    return [
+        Draft(
+            message="Skill declares compatibility requirements.",
+            detail=compatibility,
+            line=frontmatter_key_line(skill, "compatibility"),
+        )
+    ]
 
 
 def _requires_tools(skill: Skill, config: Config) -> list[Draft]:
@@ -73,28 +79,31 @@ def _requires_network(skill: Skill, config: Config) -> list[Draft]:
 
 
 def _absolute_paths(skill: Skill, config: Config) -> list[Draft]:
-    matches = _ABS_PATH_RE.findall(skill.body)
+    matches = list(_ABS_PATH_RE.finditer(skill.body))
     if not matches:
         return []
-    sample = ", ".join(m.strip() for m in matches[:3])
+    sample = ", ".join(m.group(1).strip() for m in matches[:3])
     return [
         Draft(
             message="Skill assumes absolute filesystem paths, which won't exist on other machines.",
             detail=sample,
             severity=Severity.WARNING,
+            line=offset_to_line(skill, matches[0].start(1)),
         )
     ]
 
 
 def _os_specific(skill: Skill, config: Config) -> list[Draft]:
-    matches = {m.group(0) for m in _OS_SPECIFIC_RE.finditer(skill.body)}
+    matches = list(_OS_SPECIFIC_RE.finditer(skill.body))
     if not matches:
         return []
+    unique = sorted({m.group(0) for m in matches})
     return [
         Draft(
             message="Skill references OS-specific tools or commands.",
-            detail=", ".join(sorted(matches)),
+            detail=", ".join(unique),
             severity=Severity.WARNING,
+            line=offset_to_line(skill, matches[0].start()),
         )
     ]
 

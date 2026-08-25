@@ -12,7 +12,14 @@ from pathlib import Path
 
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
-from skillseal.rules.base import Draft, FuncRule, Rule, extract_code_spans, local_file_targets
+from skillseal.rules.base import (
+    Draft,
+    FuncRule,
+    Rule,
+    extract_code_spans,
+    local_file_targets,
+    offset_to_line,
+)
 
 _RM_RF_RE = re.compile(r"\brm\s+(-\w*[rR]\w*[fF]\w*|-\w*[fF]\w*[rR]\w*)\b")
 _PIPE_SHELL_RE = re.compile(r"\b(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b", re.IGNORECASE)
@@ -33,20 +40,25 @@ _INTERP_SHELL_RE = re.compile(
 )
 
 
-def _aggregate(matches: list[str], message: str) -> list[Draft]:
+def _aggregate(matches: list[tuple[str, int]], message: str, skill: Skill) -> list[Draft]:
     if not matches:
         return []
-    sample = matches[0].strip()[:80]
+    sample_text, sample_offset = matches[0]
+    sample = sample_text.strip()[:80]
     detail = f'{len(matches)} occurrence(s), e.g. "{sample}"'
-    return [Draft(message=message, detail=detail)]
+    return [Draft(message=message, detail=detail, line=offset_to_line(skill, sample_offset))]
 
 
-def _matches_in_code(skill: Skill, pattern: re.Pattern[str]) -> list[str]:
-    return [m.group(0) for span in extract_code_spans(skill.body) for m in pattern.finditer(span)]
+def _matches_in_code(skill: Skill, pattern: re.Pattern[str]) -> list[tuple[str, int]]:
+    return [
+        (m.group(0), span_offset + m.start())
+        for span, span_offset in extract_code_spans(skill.body)
+        for m in pattern.finditer(span)
+    ]
 
 
-def _matches_in_body(skill: Skill, pattern: re.Pattern[str]) -> list[str]:
-    return [m.group(0) for m in pattern.finditer(skill.body)]
+def _matches_in_body(skill: Skill, pattern: re.Pattern[str]) -> list[tuple[str, int]]:
+    return [(m.group(0), m.start()) for m in pattern.finditer(skill.body)]
 
 
 # --- bundled files (scripts/, references/, assets/) -----------------------
@@ -123,25 +135,38 @@ def _scan_bundled(skill: Skill, patterns: dict[str, re.Pattern[str]]) -> list[st
 
 
 def _bundled_dangerous_command(skill: Skill, config: Config) -> list[Draft]:
-    return _aggregate(
-        _scan_bundled(skill, _BUNDLED_ERROR_PATTERNS),
-        "Potential risk: dangerous command found in a bundled file "
-        "(scripts/references/assets), not just SKILL.md itself.",
-    )
+    hits = _scan_bundled(skill, _BUNDLED_ERROR_PATTERNS)
+    if not hits:
+        return []
+    detail = f'{len(hits)} occurrence(s), e.g. "{hits[0][:80]}"'
+    return [
+        Draft(
+            message="Potential risk: dangerous command found in a bundled file "
+            "(scripts/references/assets), not just SKILL.md itself.",
+            detail=detail,
+        )
+    ]
 
 
 def _bundled_risky_command(skill: Skill, config: Config) -> list[Draft]:
-    return _aggregate(
-        _scan_bundled(skill, _BUNDLED_WARNING_PATTERNS),
-        "Potential risk: risky command found in a bundled file "
-        "(scripts/references/assets), not just SKILL.md itself.",
-    )
+    hits = _scan_bundled(skill, _BUNDLED_WARNING_PATTERNS)
+    if not hits:
+        return []
+    detail = f'{len(hits)} occurrence(s), e.g. "{hits[0][:80]}"'
+    return [
+        Draft(
+            message="Potential risk: risky command found in a bundled file "
+            "(scripts/references/assets), not just SKILL.md itself.",
+            detail=detail,
+        )
+    ]
 
 
 def _rm_rf(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _RM_RF_RE),
         "Potential risk: recursive force-delete command found in a code block.",
+        skill,
     )
 
 
@@ -149,6 +174,7 @@ def _pipe_to_shell(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _PIPE_SHELL_RE),
         "Potential risk: downloads remote content and pipes it directly into a shell.",
+        skill,
     )
 
 
@@ -156,6 +182,7 @@ def _eval_exec(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _EVAL_EXEC_RE),
         "Potential risk: dynamic code execution (eval/exec) found in a code block.",
+        skill,
     )
 
 
@@ -163,6 +190,7 @@ def _sudo(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _SUDO_RE),
         "Potential risk: elevated-privilege command (sudo) found in a code block.",
+        skill,
     )
 
 
@@ -170,6 +198,7 @@ def _chmod_777(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _CHMOD_777_RE),
         "Potential risk: overly permissive file permissions (chmod 777) found in a code block.",
+        skill,
     )
 
 
@@ -177,6 +206,7 @@ def _ssh_key_access(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_body(skill, _SSH_KEY_RE),
         "Potential risk: skill references the user's SSH key directory (~/.ssh).",
+        skill,
     )
 
 
@@ -184,6 +214,7 @@ def _env_access(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_body(skill, _ENV_ACCESS_RE),
         "Potential risk: skill appears to read a .env file, which often holds secrets.",
+        skill,
     )
 
 
@@ -191,6 +222,7 @@ def _secret_file_read(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _SECRET_FILE_RE),
         "Potential risk: skill appears to read private keys or secret material.",
+        skill,
     )
 
 
@@ -198,21 +230,23 @@ def _interpolated_shell_input(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_code(skill, _INTERP_SHELL_RE),
         "Potential risk: possible unsanitized variable interpolation into a shell command.",
+        skill,
     )
 
 
 def _path_traversal(skill: Skill, config: Config) -> list[Draft]:
     skill_root = skill.dir.resolve()
     escapes = []
-    for target in local_file_targets(skill.body):
+    for target, offset in local_file_targets(skill.body):
         resolved = (skill.dir / target).resolve()
         try:
             resolved.relative_to(skill_root)
         except ValueError:
-            escapes.append(target)
+            escapes.append((target, offset))
     return _aggregate(
         escapes,
         "Potential risk: file reference escapes the skill's own directory.",
+        skill,
     )
 
 

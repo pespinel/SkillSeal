@@ -33,11 +33,16 @@ def test_absolute_path_is_warning(make_skill) -> None:
     ]
     assert len(findings) == 1
     assert findings[0].severity.value == "WARNING"
+    assert findings[0].line == 5  # single-line body
 
 
 def test_os_specific_command(make_skill) -> None:
     skill = make_skill(body="On macOS, run `brew install ffmpeg` first.\n")
     assert "os-specific-command" in _run(skill)
+    findings = [
+        f for rule in portability.RULES for f in rule.check(skill) if f.id == "os-specific-command"
+    ]
+    assert findings[0].line == 5
 
 
 def test_declared_compatibility_surfaced(make_skill) -> None:
@@ -57,6 +62,7 @@ def test_declared_compatibility_surfaced(make_skill) -> None:
     assert len(findings) == 1
     assert findings[0].severity.value == "INFO"
     assert "Requires git" in (findings[0].detail or "")
+    assert findings[0].line == 4  # 'compatibility:' is the 3rd frontmatter key
     # the free-text compatibility field also feeds the existing tool/network scans
     assert "requires-tools" in _run(skill)
     assert "requires-network" in _run(skill)

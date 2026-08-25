@@ -32,6 +32,7 @@ class Finding(BaseModel):
     severity: Severity
     message: str
     detail: str | None = None
+    line: int | None = None
 
 
 class Skill(BaseModel):
@@ -49,6 +50,10 @@ class Skill(BaseModel):
     frontmatter_error: str | None = None
     # "missing-frontmatter" | "frontmatter-not-at-start" | "invalid-frontmatter" | None
     frontmatter_error_kind: str | None = None
+    # raw YAML between the '---' fences, kept for key-line lookups (rules/base.py)
+    frontmatter_text: str = ""
+    # set only when frontmatter_error_kind == "invalid-frontmatter" and pyyaml gave a mark
+    frontmatter_error_line: int | None = None
 
     @property
     def dir_name(self) -> str:

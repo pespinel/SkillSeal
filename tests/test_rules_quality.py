@@ -5,6 +5,10 @@ def _run(skill) -> set[str]:
     return {f.id for rule in quality.RULES for f in rule.check(skill)}
 
 
+def _find(skill, finding_id: str):
+    return next(f for rule in quality.RULES for f in rule.check(skill) if f.id == finding_id)
+
+
 def test_clean_skill_has_no_findings(make_skill) -> None:
     skill = make_skill(
         description="Use this skill when a user asks for a code review of payment logic.",
@@ -27,22 +31,28 @@ def test_repeated_instruction_lines(make_skill) -> None:
     line = "Always double check the output before returning it to the user.\n"
     skill = make_skill(body=line * 3)
     assert "repeated-instructions" in _run(skill)
+    # body starts at file line 5 (4-line frontmatter block above it); first
+    # occurrence of the repeated line is body's own first line
+    assert _find(skill, "repeated-instructions").line == 5
 
 
 def test_long_section(make_skill) -> None:
     body = "## Section\n\n" + ("word " * 900)
     skill = make_skill(body=body)
     assert "section-too-long" in _run(skill)
+    assert _find(skill, "section-too-long").line == 5  # the '## Section' heading
 
 
 def test_vague_description(make_skill) -> None:
     skill = make_skill(description="Helps with tasks.")
     assert "description-too-vague" in _run(skill)
+    assert _find(skill, "description-too-vague").line == 3  # 'description:' frontmatter line
 
 
 def test_description_missing_when_to_use(make_skill) -> None:
     skill = make_skill(description="Reviews payment code for correctness and security issues.")
     assert "description-missing-when-to-use" in _run(skill)
+    assert _find(skill, "description-missing-when-to-use").line == 3
 
 
 def test_description_with_when_cue_passes(make_skill) -> None:
@@ -61,6 +71,7 @@ def test_too_many_responsibilities(make_skill) -> None:
 def test_dangling_file_reference(make_skill) -> None:
     skill = make_skill(body="See [the guide](./missing-file.md) for details.\n")
     assert "dangling-file-reference" in _run(skill)
+    assert _find(skill, "dangling-file-reference").line == 5
 
 
 def test_existing_file_reference_passes(make_skill) -> None:

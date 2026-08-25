@@ -52,7 +52,8 @@ def _render_skill_report(report: SkillReport, console: Console, root: Path | Non
         for f in report.findings:
             tag = _SEVERITY_TAG[f.severity]
             color = _SEVERITY_COLOR[f.severity]
-            console.print(f"[{color}]{tag:<5}[/{color}] {f.id}")
+            location = f"  (line {f.line})" if f.line else ""
+            console.print(f"[{color}]{tag:<5}[/{color}] {f.id}{location}")
             console.print(f"      {f.message}")
             if f.detail:
                 console.print(f"      [dim]{f.detail}[/dim]")
@@ -148,7 +149,8 @@ def render_skill_diff(diff: SkillDiff, console: Console) -> None:
         for f in diff.added:
             tag = _SEVERITY_TAG[f.severity]
             color = _SEVERITY_COLOR[f.severity]
-            console.print(f"[{color}]{tag:<5}[/{color}] {f.id}  {f.message}")
+            location = f" (line {f.line})" if f.line else ""
+            console.print(f"[{color}]{tag:<5}[/{color}] {f.id}{location}  {f.message}")
 
     if diff.removed:
         console.print("\n[bold green]Resolved findings[/bold green]\n")

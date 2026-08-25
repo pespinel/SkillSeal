@@ -8,13 +8,13 @@ def test_check_reports_to_json_schema(make_skill) -> None:
     from skillseal.models import Finding
 
     finding = Finding(
-        id="test-id", category=Category.SECURITY, severity=Severity.WARNING, message="msg"
+        id="test-id", category=Category.SECURITY, severity=Severity.WARNING, message="msg", line=7
     )
     report = build_report(skill, [finding])
 
     payload = check_reports_to_json([report], root=skill.dir)
 
-    assert payload["version"] == 1
+    assert payload["version"] == 2
     assert len(payload["skills"]) == 1
     entry = payload["skills"][0]
     assert entry["name"] == skill.name
@@ -28,6 +28,7 @@ def test_check_reports_to_json_schema(make_skill) -> None:
             "severity": "WARNING",
             "message": "msg",
             "detail": None,
+            "line": 7,
         }
     ]
     # frontmatter/body must not leak into the payload
@@ -49,7 +50,7 @@ def test_routing_summaries_to_json_schema(make_skill) -> None:
 
     payload = routing_summaries_to_json([(skill, summary)])
 
-    assert payload["version"] == 1
+    assert payload["version"] == 2
     assert payload["skills_scanned"] == 1
     assert payload["skills_with_tests"] == 1
     entry = payload["skills"][0]

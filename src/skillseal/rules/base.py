@@ -33,6 +33,7 @@ class Draft:
     message: str
     detail: str | None = None
     severity: Severity | None = None  # override the rule's default severity
+    line: int | None = None
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,7 @@ class FuncRule:
                 severity=draft.severity or self.severity,
                 message=draft.message,
                 detail=draft.detail,
+                line=draft.line,
             )
             for draft in self.fn(skill, config)
         ]
@@ -98,35 +100,52 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
-def extract_code_spans(text: str) -> list[str]:
-    """Return the contents of fenced/indented code blocks and inline code spans."""
-    spans = [m.group(2) for m in _FENCED_CODE_RE.finditer(text)]
-    spans.extend(_INDENTED_CODE_RE.findall(text))
-    spans.extend(_INLINE_CODE_RE.findall(text))
+def extract_code_spans(text: str) -> list[tuple[str, int]]:
+    """Return (content, start_offset) for fenced/indented code blocks and inline code spans."""
+    spans = [(m.group(2), m.start(2)) for m in _FENCED_CODE_RE.finditer(text)]
+    spans.extend((m.group(0), m.start()) for m in _INDENTED_CODE_RE.finditer(text))
+    spans.extend((m.group(1), m.start(1)) for m in _INLINE_CODE_RE.finditer(text))
     return spans
 
 
-def split_sections(body: str) -> list[tuple[str, str]]:
-    """Split a markdown body into (heading, section_text) pairs on level 2-6 headings."""
+def split_sections(body: str) -> list[tuple[str, str, int]]:
+    """Split into (heading, section_text, heading_offset) on level 2-6 headings."""
     headings = list(_HEADING_RE.finditer(body))
     if not headings:
-        return [("", body)]
+        return [("", body, 0)]
     sections = []
     for i, h in enumerate(headings):
         start = h.end()
         end = headings[i + 1].start() if i + 1 < len(headings) else len(body)
-        sections.append((h.group(1).strip(), body[start:end]))
+        sections.append((h.group(1).strip(), body[start:end], h.start()))
     return sections
 
 
-def markdown_link_targets(body: str) -> list[str]:
-    return _MD_LINK_RE.findall(body)
+def markdown_link_targets(body: str) -> list[tuple[str, int]]:
+    return [(m.group(1), m.start(1)) for m in _MD_LINK_RE.finditer(body)]
 
 
-def local_file_targets(body: str) -> list[str]:
-    """Markdown link targets that point at a local file, not a URL or an in-page anchor."""
+def local_file_targets(body: str) -> list[tuple[str, int]]:
+    """Markdown link targets (with offset) that point at a local file, not a URL/anchor."""
     return [
-        target
-        for target in markdown_link_targets(body)
+        (target, offset)
+        for target, offset in markdown_link_targets(body)
         if not _URL_SCHEME_RE.match(target) and not target.startswith("#")
     ]
+
+
+def offset_to_line(skill: Skill, body_offset: int) -> int:
+    """Character offset within skill.body -> 1-based line number in the file."""
+    prefix_len = len(skill.raw_text) - len(skill.body)
+    prefix_newlines = skill.raw_text[:prefix_len].count("\n")
+    return prefix_newlines + skill.body.count("\n", 0, body_offset) + 1
+
+
+def frontmatter_key_line(skill: Skill, key: str) -> int:
+    """Line of `key:` in the frontmatter block, or line 1 if absent/there's no frontmatter."""
+    if not skill.frontmatter_text:
+        return 1
+    m = re.search(rf"^{re.escape(key)}\s*:", skill.frontmatter_text, re.MULTILINE)
+    if m is None:
+        return 1
+    return skill.frontmatter_text.count("\n", 0, m.start()) + 2

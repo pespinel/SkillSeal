@@ -21,7 +21,7 @@ from skillseal.models import (
 )
 from skillseal.reporters.terminal import display_path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def check_reports_to_json(reports: list[SkillReport], root: Path | None = None) -> dict[str, Any]:
@@ -35,6 +35,7 @@ def _finding_to_dict(f: Finding) -> dict[str, Any]:
         "severity": f.severity.value,
         "message": f.message,
         "detail": f.detail,
+        "line": f.line,
     }
 
 

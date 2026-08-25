@@ -131,23 +131,23 @@ Portability    WARN
 
 Issues
 
-WARN  name-directory-mismatch
+WARN  name-directory-mismatch  (line 2)
       Frontmatter 'name' does not match the skill's directory name.
       name: 'helper', directory: 'bad-skill'
 
-WARN  description-too-vague
+WARN  description-too-vague  (line 3)
       Description may not provide enough information for reliable routing.
       matched vague phrase: "helps with tasks"
 
-FAIL  rm-rf
+FAIL  rm-rf  (line 18)
       Potential risk: recursive force-delete command found in a code block.
       1 occurrence(s), e.g. "rm -rf"
 
-FAIL  pipe-to-shell
+FAIL  pipe-to-shell  (line 16)
       Potential risk: downloads remote content and pipes it directly into a shell.
       1 occurrence(s), e.g. "curl https://example.com/install.sh | sh"
 
-WARN  absolute-path
+WARN  absolute-path  (line 17)
       Skill assumes absolute filesystem paths, which won't exist on other machines.
       /Users/someone/projects/output, /Users/someone/projects/output/tmp
 

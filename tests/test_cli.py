@@ -48,7 +48,7 @@ def test_check_ignore_prefix_suppresses_matching_findings() -> None:
 def test_check_json_format_is_valid_json() -> None:
     result = runner.invoke(app, ["check", str(EXAMPLES / "good-skill"), "--format", "json"])
     payload = json.loads(result.stdout)
-    assert payload["version"] == 1
+    assert payload["version"] == 2
     assert len(payload["skills"]) == 1
 
 
@@ -70,7 +70,7 @@ def test_routing_bad_skill_passes_low_threshold() -> None:
 def test_routing_json_format_is_valid_json() -> None:
     result = runner.invoke(app, ["test", str(EXAMPLES / "good-skill"), "--format", "json"])
     payload = json.loads(result.stdout)
-    assert payload["version"] == 1
+    assert payload["version"] == 2
 
 
 def test_routing_require_tests_fails_on_missing_config() -> None:
