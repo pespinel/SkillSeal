@@ -133,3 +133,38 @@ class RoutingSummary(BaseModel):
     @property
     def failures(self) -> list[RoutingCaseResult]:
         return [r for r in self.results if not r.passed]
+
+
+class DuplicateNameConflict(BaseModel):
+    """Two or more skills in the same scan declare the same frontmatter `name`."""
+
+    name: str
+    paths: list[Path]
+
+
+class RoutingOverlapConflict(BaseModel):
+    """Two different skills whose vocabularies overlap enough to likely both
+
+    trigger for the same prompts, based on Jaccard similarity of their
+    HeuristicRoutingEvaluator term sets (see routing/evaluator.py:skill_terms).
+    """
+
+    skill_a: str
+    skill_b: str
+    path_a: Path
+    path_b: Path
+    similarity: float
+    shared_terms: list[str]
+
+
+class ConflictReport(BaseModel):
+    """Result of scanning a directory of skills for cross-skill conflicts."""
+
+    threshold: float
+    skills_scanned: int
+    duplicate_names: list[DuplicateNameConflict] = Field(default_factory=list)
+    routing_overlaps: list[RoutingOverlapConflict] = Field(default_factory=list)
+
+    @property
+    def has_conflicts(self) -> bool:
+        return bool(self.duplicate_names or self.routing_overlaps)
