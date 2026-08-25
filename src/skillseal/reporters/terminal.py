@@ -1,4 +1,4 @@
-"""Rich-based terminal output for `skillseal check`, `test`, and `conflicts`."""
+"""Rich-based terminal output for `skillseal check`, `test`, `conflicts`, and `diff`."""
 
 from __future__ import annotations
 
@@ -6,7 +6,15 @@ from pathlib import Path
 
 from rich.console import Console
 
-from skillseal.models import Category, ConflictReport, RoutingSummary, Severity, Skill, SkillReport
+from skillseal.models import (
+    Category,
+    ConflictReport,
+    RoutingSummary,
+    Severity,
+    Skill,
+    SkillDiff,
+    SkillReport,
+)
 from skillseal.scoring import category_status
 
 _STATUS_COLOR = {"PASS": "green", "WARN": "yellow", "FAIL": "red"}
@@ -115,3 +123,34 @@ def render_conflict_report(
             console.print(f"  Similarity: {ov.similarity:.0%} (threshold: {report.threshold:.0%})")
             console.print(f"  Shared terms: {', '.join(ov.shared_terms[:8])}")
             console.print()
+
+
+def render_skill_diff(diff: SkillDiff, console: Console) -> None:
+    delta = diff.score_delta
+    delta_str = f"+{delta}" if delta > 0 else str(delta)
+    delta_color = "red" if diff.regressed else ("green" if delta > 0 else "dim")
+    console.print(
+        f"Score: {diff.old.score} -> {diff.new.score}  "
+        f"[{delta_color}]({delta_str})[/{delta_color}]\n"
+    )
+
+    for category in Category:
+        old_s = diff.old.category_scores[category]
+        new_s = diff.new.category_scores[category]
+        marker = "" if old_s == new_s else f"  ({old_s} -> {new_s})"
+        console.print(f"{category.value.capitalize():<15}{new_s:>3}{marker}")
+
+    if diff.added:
+        console.print("\n[bold red]New findings[/bold red]\n")
+        for f in diff.added:
+            tag = _SEVERITY_TAG[f.severity]
+            color = _SEVERITY_COLOR[f.severity]
+            console.print(f"[{color}]{tag:<5}[/{color}] {f.id}  {f.message}")
+
+    if diff.removed:
+        console.print("\n[bold green]Resolved findings[/bold green]\n")
+        for f in diff.removed:
+            console.print(f"  {f.id}  {f.message}")
+
+    if not diff.added and not diff.removed:
+        console.print("\n[dim]No finding changes.[/dim]")

@@ -148,3 +148,37 @@ def test_malformed_config_exits_two(tmp_path: Path) -> None:
     )
     result = runner.invoke(app, ["check", str(skill_dir)])
     assert result.exit_code == 2
+
+
+def test_diff_improvement_exits_zero() -> None:
+    result = runner.invoke(app, ["diff", str(EXAMPLES / "bad-skill"), str(EXAMPLES / "good-skill")])
+    assert result.exit_code == 0
+
+
+def test_diff_regression_exits_one() -> None:
+    result = runner.invoke(app, ["diff", str(EXAMPLES / "good-skill"), str(EXAMPLES / "bad-skill")])
+    assert result.exit_code == 1
+
+
+def test_diff_json_format_is_valid_json() -> None:
+    result = runner.invoke(
+        app,
+        ["diff", str(EXAMPLES / "bad-skill"), str(EXAMPLES / "good-skill"), "--format", "json"],
+    )
+    payload = json.loads(result.stdout)
+    assert payload["score_delta"] == payload["new"]["score"] - payload["old"]["score"]
+    assert payload["regressed"] is False
+
+
+def test_diff_nonexistent_old_path_exits_two() -> None:
+    result = runner.invoke(
+        app, ["diff", str(EXAMPLES / "does-not-exist"), str(EXAMPLES / "good-skill")]
+    )
+    assert result.exit_code == 2
+
+
+def test_diff_target_with_multiple_skills_exits_two() -> None:
+    result = runner.invoke(
+        app, ["diff", str(EXAMPLES / "conflicting-skills"), str(EXAMPLES / "good-skill")]
+    )
+    assert result.exit_code == 2

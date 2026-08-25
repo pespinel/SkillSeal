@@ -10,7 +10,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from skillseal.models import Category, ConflictReport, RoutingSummary, Skill, SkillReport
+from skillseal.models import (
+    Category,
+    ConflictReport,
+    Finding,
+    RoutingSummary,
+    Skill,
+    SkillDiff,
+    SkillReport,
+)
 from skillseal.reporters.terminal import display_path
 
 SCHEMA_VERSION = 1
@@ -20,6 +28,16 @@ def check_reports_to_json(reports: list[SkillReport], root: Path | None = None) 
     return {"version": SCHEMA_VERSION, "skills": [_report_to_dict(r, root) for r in reports]}
 
 
+def _finding_to_dict(f: Finding) -> dict[str, Any]:
+    return {
+        "id": f.id,
+        "category": f.category.value,
+        "severity": f.severity.value,
+        "message": f.message,
+        "detail": f.detail,
+    }
+
+
 def _report_to_dict(report: SkillReport, root: Path | None) -> dict[str, Any]:
     skill = report.skill
     return {
@@ -27,16 +45,7 @@ def _report_to_dict(report: SkillReport, root: Path | None) -> dict[str, Any]:
         "path": display_path(skill.path, root),
         "score": report.score,
         "category_scores": {c.value: report.category_scores[c] for c in Category},
-        "findings": [
-            {
-                "id": f.id,
-                "category": f.category.value,
-                "severity": f.severity.value,
-                "message": f.message,
-                "detail": f.detail,
-            }
-            for f in report.findings
-        ],
+        "findings": [_finding_to_dict(f) for f in report.findings],
     }
 
 
@@ -103,4 +112,16 @@ def conflict_report_to_json(report: ConflictReport, root: Path | None = None) ->
             }
             for o in report.routing_overlaps
         ],
+    }
+
+
+def skill_diff_to_json(diff: SkillDiff, root: Path | None = None) -> dict[str, Any]:
+    return {
+        "version": SCHEMA_VERSION,
+        "old": _report_to_dict(diff.old, root),
+        "new": _report_to_dict(diff.new, root),
+        "score_delta": diff.score_delta,
+        "regressed": diff.regressed,
+        "added": [_finding_to_dict(f) for f in diff.added],
+        "removed": [_finding_to_dict(f) for f in diff.removed],
     }

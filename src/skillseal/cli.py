@@ -2,7 +2,7 @@
 
 Exit codes (all commands):
   0 = clean / gate passed
-  1 = gate failed (--fail-on / --threshold not met, or a conflict was found)
+  1 = gate failed (--fail-on / --threshold not met, a conflict was found, or diff regressed)
   2 = usage or config error (bad path, no SKILL.md found, malformed skillseal.yaml/toml)
 """
 
@@ -18,17 +18,20 @@ from rich.console import Console
 
 from skillseal.config import Config, ConfigError, load_config
 from skillseal.conflicts import find_conflicts
+from skillseal.diff import DiffTargetError, diff_skills
 from skillseal.linter import lint_path
 from skillseal.models import Severity
 from skillseal.reporters.json_reporter import (
     check_reports_to_json,
     conflict_report_to_json,
     routing_summaries_to_json,
+    skill_diff_to_json,
 )
 from skillseal.reporters.terminal import (
     render_check_reports,
     render_conflict_report,
     render_routing_summaries,
+    render_skill_diff,
 )
 from skillseal.routing.evaluator import (
     HeuristicRoutingEvaluator,
@@ -200,6 +203,33 @@ def conflicts(
         render_conflict_report(report, console)
 
     raise typer.Exit(code=1 if report.has_conflicts else 0)
+
+
+@app.command(name="diff")
+def diff_command(
+    old: Annotated[Path, typer.Argument(help="Old version: a SKILL.md file or skill directory.")],
+    new: Annotated[Path, typer.Argument(help="New version: a SKILL.md file or skill directory.")],
+    format: Annotated[OutputFormat, typer.Option(help="Output format.")] = OutputFormat.TERMINAL,
+) -> None:
+    """Compare two versions of a skill: score and finding deltas."""
+    for label, path in (("old", old), ("new", new)):
+        if not path.exists():
+            err_console.print(f"[red]Error:[/red] {label} path not found: {path}")
+            raise typer.Exit(code=2)
+
+    config = _load_config_or_exit(new)
+    try:
+        diff = diff_skills(old, new, config)
+    except DiffTargetError as exc:
+        err_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    if format is OutputFormat.JSON:
+        print(json.dumps(skill_diff_to_json(diff), indent=2))
+    else:
+        render_skill_diff(diff, console)
+
+    raise typer.Exit(code=1 if diff.regressed else 0)
 
 
 if __name__ == "__main__":

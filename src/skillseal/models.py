@@ -168,3 +168,20 @@ class ConflictReport(BaseModel):
     @property
     def has_conflicts(self) -> bool:
         return bool(self.duplicate_names or self.routing_overlaps)
+
+
+class SkillDiff(BaseModel):
+    """Score/finding delta between two versions of a skill (e.g. old path vs new path)."""
+
+    old: SkillReport
+    new: SkillReport
+    added: list[Finding] = Field(default_factory=list)
+    removed: list[Finding] = Field(default_factory=list)
+
+    @property
+    def score_delta(self) -> int:
+        return self.new.score - self.old.score
+
+    @property
+    def regressed(self) -> bool:
+        return self.score_delta < 0
