@@ -126,6 +126,26 @@ def _terms(text: str) -> set[str]:
     return {_stem(w) for w in words if len(w) >= 2 and w not in _STOPWORDS}
 
 
+def _keyword_terms(skill: Skill) -> set[str]:
+    raw_keywords = skill.frontmatter.get("keywords")
+    if not isinstance(raw_keywords, list):
+        return set()
+    terms: set[str] = set()
+    for kw in raw_keywords:
+        terms |= _terms(str(kw))
+    return terms
+
+
+def skill_terms(skill: Skill) -> set[str]:
+    """A skill's distinctive vocabulary: name + description + declared `keywords:`.
+
+    Shared by HeuristicRoutingEvaluator and cross-skill conflict detection, so
+    "how much does this prompt/skill overlap with this skill" is computed the
+    same way everywhere.
+    """
+    return _terms(f"{skill.name.replace('-', ' ')} {skill.description}") | _keyword_terms(skill)
+
+
 class RoutingEvaluator(Protocol):
     def evaluate(self, skill: Skill, prompt: str) -> RoutingResult: ...
 
@@ -146,15 +166,8 @@ class HeuristicRoutingEvaluator:
 
     def evaluate(self, skill: Skill, prompt: str) -> RoutingResult:
         prompt_terms = _terms(prompt)
-        desc_terms = _terms(f"{skill.name.replace('-', ' ')} {skill.description}")
-
-        keyword_terms: set[str] = set()
-        raw_keywords = skill.frontmatter.get("keywords")
-        if isinstance(raw_keywords, list):
-            for kw in raw_keywords:
-                keyword_terms |= _terms(str(kw))
-
-        reference_terms = desc_terms | keyword_terms
+        keyword_terms = _keyword_terms(skill)
+        reference_terms = skill_terms(skill)
         if not reference_terms or not prompt_terms:
             return RoutingResult(
                 triggered=False,
