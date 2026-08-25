@@ -17,27 +17,37 @@ codes and JSON output. No dashboard, no registry, no cloud — see
 
 ## Installation
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.12+. Install from [PyPI](https://pypi.org/project/skillseal/)
+with [uv](https://docs.astral.sh/uv/), pipx, or pip:
 
 ```bash
-git clone <this-repo>
-cd skillseal
-uv sync
+uv tool install skillseal
+# or: pipx install skillseal
+# or: pip install skillseal
 ```
 
-Run it directly with `uv run skillseal ...`, or install it as a tool:
+No install at all, one-off run:
 
 ```bash
-uv tool install .
-skillseal --help
+uvx skillseal check ./skills
+```
+
+For local development, clone the repo instead:
+
+```bash
+git clone https://github.com/pespinel/skillseal
+cd skillseal
+uv sync
 ```
 
 ## Quickstart
 
 ```bash
-uv run skillseal check examples
-uv run skillseal test examples
+skillseal check examples
+skillseal test examples
 ```
+
+(From a repo clone without installing, prefix both with `uv run`.)
 
 Both commands accept a path to a single `SKILL.md` file, a single skill
 directory, or a directory containing many skills (searched recursively).
@@ -167,11 +177,13 @@ routing:
 ## Using it in CI
 
 ```yaml
+- uses: astral-sh/setup-uv@v3
+
 - name: Check Agent Skills
-  run: uv run skillseal check ./skills --fail-on error
+  run: uvx skillseal check ./skills --fail-on error
 
 - name: Test Agent Skill Routing
-  run: uv run skillseal test ./skills
+  run: uvx skillseal test ./skills
 ```
 
 This repo's own [`.github/workflows/ci.yml`](.github/workflows/ci.yml) does
