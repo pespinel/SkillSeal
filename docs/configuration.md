@@ -1,5 +1,33 @@
 # Configuration
 
+## Frontmatter extensions
+
+Beyond the fields defined by the [agentskills.io spec](https://agentskills.io/specification)
+(`name`, `description`, `license`, `compatibility`, `metadata`,
+`allowed-tools`), SkillSeal recognizes two extra frontmatter keys of its own.
+Both are optional and inert to any other tool — they just won't trigger the
+`unknown-frontmatter-keys` finding here.
+
+```yaml
+---
+name: payment-review
+description: Use this skill when reviewing a payment or checkout implementation.
+keywords:
+  - stripe
+  - checkout
+  - refund
+conflict_ignore:
+  - legacy-payment-check
+---
+```
+
+- **`keywords`** — a list of extra terms fed into the
+  `HeuristicRoutingEvaluator` (see [Development](development.md)) alongside
+  `name` and `description`, for `test` and `conflicts`. Useful when a skill's
+  description doesn't naturally contain the exact words users are likely to
+  type.
+- **`conflict_ignore`** — see [`conflicts`](commands.md#skillseal-conflicts-path).
+
 ## `skillseal.yaml`
 
 Place a `skillseal.yaml` next to a `SKILL.md` to define its routing tests:
