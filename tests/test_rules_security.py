@@ -60,6 +60,21 @@ def test_interpolated_shell_input(make_skill) -> None:
     assert "interpolated-shell-input" in _run(skill)
 
 
+def test_path_traversal_escaping_directory(make_skill) -> None:
+    skill = make_skill(body="See [config](../../etc/passwd) for details.\n")
+    assert "path-traversal" in _run(skill)
+
+
+def test_path_traversal_absolute_path(make_skill) -> None:
+    skill = make_skill(body="See [config](/etc/passwd) for details.\n")
+    assert "path-traversal" in _run(skill)
+
+
+def test_relative_reference_within_directory_not_flagged(make_skill) -> None:
+    skill = make_skill(body="See [config](./docs/config.md) for details.\n")
+    assert "path-traversal" not in _run(skill)
+
+
 def test_repeated_occurrences_aggregate_into_one_finding(make_skill) -> None:
     skill = make_skill(body="```bash\nrm -rf /a\nrm -rf /b\nrm -rf /c\n```\n")
     findings = [f for rule in security.RULES for f in rule.check(skill) if f.id == "rm-rf"]

@@ -11,7 +11,7 @@ from skillseal.rules.base import (
     FuncRule,
     Rule,
     estimate_tokens,
-    markdown_link_targets,
+    local_file_targets,
     split_sections,
 )
 
@@ -37,7 +37,6 @@ _WHEN_CUE_RE = re.compile(
     re.IGNORECASE,
 )
 _HEADING_RE = re.compile(r"^##[ \t]+", re.MULTILINE)
-_URL_SCHEME_RE = re.compile(r"^[a-z][a-z0-9+.-]*:")
 
 
 def _skill_too_large(skill: Skill) -> list[Draft]:
@@ -125,9 +124,7 @@ def _too_many_responsibilities(skill: Skill) -> list[Draft]:
 
 def _dangling_file_references(skill: Skill) -> list[Draft]:
     missing = []
-    for target in markdown_link_targets(skill.body):
-        if _URL_SCHEME_RE.match(target) or target.startswith("#"):
-            continue
+    for target in local_file_targets(skill.body):
         if not (skill.dir / target).exists():
             missing.append(target)
     if not missing:

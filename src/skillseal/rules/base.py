@@ -84,6 +84,7 @@ _FENCED_CODE_RE = re.compile(r"```.*?\n(.*?)```", re.DOTALL)
 _INLINE_CODE_RE = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
 _HEADING_RE = re.compile(r"^#{2,6}[ \t]+(.+)$", re.MULTILINE)
 _MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+_URL_SCHEME_RE = re.compile(r"^[a-z][a-z0-9+.-]*:")
 
 
 def estimate_tokens(text: str) -> int:
@@ -113,3 +114,12 @@ def split_sections(body: str) -> list[tuple[str, str]]:
 
 def markdown_link_targets(body: str) -> list[str]:
     return _MD_LINK_RE.findall(body)
+
+
+def local_file_targets(body: str) -> list[str]:
+    """Markdown link targets that point at a local file, not a URL or an in-page anchor."""
+    return [
+        target
+        for target in markdown_link_targets(body)
+        if not _URL_SCHEME_RE.match(target) and not target.startswith("#")
+    ]

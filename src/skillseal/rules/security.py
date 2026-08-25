@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 
 from skillseal.models import Category, Severity, Skill
-from skillseal.rules.base import Draft, FuncRule, Rule, extract_code_spans
+from skillseal.rules.base import Draft, FuncRule, Rule, extract_code_spans, local_file_targets
 
 _RM_RF_RE = re.compile(r"\brm\s+(-\w*[rR]\w*[fF]\w*|-\w*[fF]\w*[rR]\w*)\b")
 _PIPE_SHELL_RE = re.compile(r"\b(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b", re.IGNORECASE)
@@ -110,6 +110,21 @@ def _interpolated_shell_input(skill: Skill) -> list[Draft]:
     )
 
 
+def _path_traversal(skill: Skill) -> list[Draft]:
+    skill_root = skill.dir.resolve()
+    escapes = []
+    for target in local_file_targets(skill.body):
+        resolved = (skill.dir / target).resolve()
+        try:
+            resolved.relative_to(skill_root)
+        except ValueError:
+            escapes.append(target)
+    return _aggregate(
+        escapes,
+        "Potential risk: file reference escapes the skill's own directory.",
+    )
+
+
 RULES: list[Rule] = [
     FuncRule(
         id="rm-rf",
@@ -173,5 +188,12 @@ RULES: list[Rule] = [
         severity=Severity.WARNING,
         description="Flags possible unsanitized interpolation into shell commands.",
         fn=_interpolated_shell_input,
+    ),
+    FuncRule(
+        id="path-traversal",
+        category=Category.SECURITY,
+        severity=Severity.ERROR,
+        description="Flags file references that resolve outside the skill's own directory.",
+        fn=_path_traversal,
     ),
 ]
