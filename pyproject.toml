@@ -27,8 +27,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://pespinel.github.io/skillseal/"
-Documentation = "https://pespinel.github.io/skillseal/"
+Homepage = "https://pespinel.github.io/SkillSeal/"
+Documentation = "https://pespinel.github.io/SkillSeal/"
 Repository = "https://github.com/pespinel/skillseal"
 Issues = "https://github.com/pespinel/skillseal/issues"
 Changelog = "https://github.com/pespinel/skillseal/releases"

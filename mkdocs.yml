@@ -1,6 +1,6 @@
 site_name: SkillSeal
 site_description: Lint, score, and routing-test Agent Skills (SKILL.md) before your agents do.
-site_url: https://pespinel.github.io/skillseal/
+site_url: https://pespinel.github.io/SkillSeal/
 repo_url: https://github.com/pespinel/skillseal
 repo_name: pespinel/skillseal
 edit_uri: edit/main/docs/

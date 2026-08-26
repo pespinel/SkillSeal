@@ -39,7 +39,7 @@ same reasons the CI step expects.
 
 User-facing docs live under `docs/` (MkDocs Material), not in the README —
 the README is intentionally short. Deployed automatically to
-<https://pespinel.github.io/skillseal/> by
+<https://pespinel.github.io/SkillSeal/> by
 [`.github/workflows/docs.yml`](.github/workflows/docs.yml) on every push to
 `main` that touches `docs/`, `mkdocs.yml`, or `pyproject.toml`. Preview
 locally with `uv run --group docs mkdocs serve`.
@@ -50,7 +50,7 @@ locally with `uv run --group docs mkdocs serve`.
 (`feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`), English, one line,
 imperative, focused on *why*. No trailing summary paragraphs.
 
-## Architecture (see also [Development](https://pespinel.github.io/skillseal/development/) on the docs site)
+## Architecture (see also [Development](https://pespinel.github.io/SkillSeal/development/) on the docs site)
 
 ```
 src/skillseal/
@@ -84,11 +84,11 @@ in the matching `tests/test_rules_*.py`.
 
 - Hand-edit `uv.lock` — regenerate it with `uv lock` / `uv sync`.
 - Add a new dependency for something the stdlib or an existing dependency
-  already covers (see the [Limitations](https://pespinel.github.io/skillseal/limitations/)
+  already covers (see the [Limitations](https://pespinel.github.io/SkillSeal/limitations/)
   page — the scope is kept deliberately small; planned work lives in GitHub
   Issues, not the docs).
 - Bump `pyproject.toml`'s `version` casually. Once it's on `main` and CI
   passes, [`auto-release.yml`](.github/workflows/auto-release.yml) tags it
   and publishes to PyPI **automatically** — no manual tag/release step
-  anymore (see [Development § Releasing](https://pespinel.github.io/skillseal/development/#releasing)).
+  anymore (see [Development § Releasing](https://pespinel.github.io/SkillSeal/development/#releasing)).
   Only bump it when you mean to actually ship a release.

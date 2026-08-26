@@ -24,7 +24,7 @@ manual read-through misses, before an agent does.
 | **Security** | `rm -rf` / `curl \| sh` in a code block, secret-file reads |
 | **Portability** | Hardcoded `/Users/you/...` paths, OS-specific commands |
 
-**Full docs: <https://pespinel.github.io/skillseal/>**
+**Full docs: <https://pespinel.github.io/SkillSeal/>**
 
 ## Installation
 
@@ -49,9 +49,9 @@ skillseal conflicts ./skills      # duplicate names / routing overlap between sk
 skillseal diff old/ new/          # score delta between two versions of a skill
 ```
 
-See the [full command reference](https://pespinel.github.io/skillseal/commands/),
-[`skillseal.yaml`/`skillseal.toml` config](https://pespinel.github.io/skillseal/configuration/),
-and [CI integration](https://pespinel.github.io/skillseal/ci/) (GitHub Action,
+See the [full command reference](https://pespinel.github.io/SkillSeal/commands/),
+[`skillseal.yaml`/`skillseal.toml` config](https://pespinel.github.io/SkillSeal/configuration/),
+and [CI integration](https://pespinel.github.io/SkillSeal/ci/) (GitHub Action,
 pre-commit hook) on the docs site.
 
 ## Contributing
