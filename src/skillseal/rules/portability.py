@@ -12,7 +12,14 @@ import re
 
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
-from skillseal.rules.base import Draft, FuncRule, Rule, frontmatter_key_line, offset_to_line
+from skillseal.rules.base import (
+    Draft,
+    FuncRule,
+    Rule,
+    extract_code_spans,
+    frontmatter_key_line,
+    offset_to_line,
+)
 
 _TOOL_KEYWORDS = [
     "npm",
@@ -33,14 +40,16 @@ _TOOL_PATTERNS = {
     tool: re.compile(rf"\b{re.escape(tool)}\b", re.IGNORECASE) for tool in _TOOL_KEYWORDS
 }
 
-_NETWORK_RE = re.compile(
-    r"(https?://|\bnetwork\b|\binternet\b|\bapi (call|request)\b|\bdownloads?\b)",
-    re.IGNORECASE,
+_NETWORK_VERB_RE = re.compile(
+    r"(\bnetwork\b|\binternet\b|\bapi (call|request)\b|\bdownloads?\b)", re.IGNORECASE
 )
-_ABS_PATH_RE = re.compile(r"(?:^|[\s`(])(/(?:Users|home|etc|var|opt|tmp)/\S+|[A-Za-z]:\\\S+)")
-_OS_SPECIFIC_RE = re.compile(
-    r"\b(macOS|mac os|Linux|Windows|apt-get|apt install|brew install|\.bat\b|\.ps1\b|PowerShell)\b"
-)
+_URL_RE = re.compile(r"https?://", re.IGNORECASE)
+# /tmp is dropped from this list: it's the standard scratch dir on every
+# platform (unlike /Users, /home, /etc, /var, /opt), so mentioning it isn't
+# a portability assumption the way a hardcoded /Users/... path is.
+_ABS_PATH_RE = re.compile(r"(?:^|[\s`(])(/(?:Users|home|etc|var|opt)/\S+|[A-Za-z]:\\\S+)")
+_OS_COMMAND_RE = re.compile(r"\b(apt-get|apt install|brew install|\.bat\b|\.ps1\b|PowerShell)\b")
+_OS_MENTION_RE = re.compile(r"\b(macOS|mac os|Linux|Windows)\b")
 
 
 def _text(skill: Skill) -> str:
@@ -73,9 +82,22 @@ def _requires_tools(skill: Skill, config: Config) -> list[Draft]:
 
 
 def _requires_network(skill: Skill, config: Config) -> list[Draft]:
-    if not _NETWORK_RE.search(_text(skill)):
-        return []
-    return [Draft(message="Skill appears to require network access.")]
+    if _NETWORK_VERB_RE.search(_text(skill)):
+        return [Draft(message="Skill appears to require network access.")]
+    # A bare https:// link in prose is usually just a doc reference, not a
+    # network dependency — almost every skill has one. Only a URL actually
+    # inside a code block (something the skill runs, e.g. curl/wget/fetch)
+    # counts as a real signal.
+    for span, offset in extract_code_spans(skill.body):
+        m = _URL_RE.search(span)
+        if m:
+            return [
+                Draft(
+                    message="Skill appears to require network access.",
+                    line=offset_to_line(skill, offset + m.start()),
+                )
+            ]
+    return []
 
 
 def _absolute_paths(skill: Skill, config: Config) -> list[Draft]:
@@ -93,8 +115,8 @@ def _absolute_paths(skill: Skill, config: Config) -> list[Draft]:
     ]
 
 
-def _os_specific(skill: Skill, config: Config) -> list[Draft]:
-    matches = list(_OS_SPECIFIC_RE.finditer(skill.body))
+def _os_specific_command(skill: Skill, config: Config) -> list[Draft]:
+    matches = list(_OS_COMMAND_RE.finditer(skill.body))
     if not matches:
         return []
     unique = sorted({m.group(0) for m in matches})
@@ -103,6 +125,27 @@ def _os_specific(skill: Skill, config: Config) -> list[Draft]:
             message="Skill references OS-specific tools or commands.",
             detail=", ".join(unique),
             severity=Severity.WARNING,
+            line=offset_to_line(skill, matches[0].start()),
+        )
+    ]
+
+
+def _os_mention(skill: Skill, config: Config) -> list[Draft]:
+    # A bare OS *name* ("works on macOS and Linux") is documentation, not a
+    # defect — unlike an actual OS-specific command, it costs nothing (INFO)
+    # and is suppressed entirely once `compatibility:` already declares it,
+    # since that's the machine-readable version of the same statement.
+    compatibility = skill.frontmatter.get("compatibility")
+    if isinstance(compatibility, str) and compatibility.strip():
+        return []
+    matches = list(_OS_MENTION_RE.finditer(skill.body))
+    if not matches:
+        return []
+    unique = sorted({m.group(0) for m in matches})
+    return [
+        Draft(
+            message="Skill mentions specific operating systems.",
+            detail=", ".join(unique),
             line=offset_to_line(skill, matches[0].start()),
         )
     ]
@@ -142,6 +185,13 @@ RULES: list[Rule] = [
         category=Category.PORTABILITY,
         severity=Severity.WARNING,
         description="Flags OS-specific commands or tooling.",
-        fn=_os_specific,
+        fn=_os_specific_command,
+    ),
+    FuncRule(
+        id="os-mention",
+        category=Category.PORTABILITY,
+        severity=Severity.INFO,
+        description="Notes bare OS-name mentions, unless already covered by 'compatibility:'.",
+        fn=_os_mention,
     ),
 ]
