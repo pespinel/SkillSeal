@@ -119,6 +119,14 @@ def render_conflict_report(
                 console.print(f"  - {display_path(p, root)}")
             console.print()
 
+    if report.near_duplicate_names:
+        console.print("[bold]Near-duplicate names[/bold]\n")
+        for nd in report.near_duplicate_names:
+            console.print(f'[yellow]![/yellow] "{nd.name_a}" vs "{nd.name_b}"')
+            console.print(f"  {display_path(nd.path_a, root)}")
+            console.print(f"  {display_path(nd.path_b, root)}")
+            console.print()
+
     if report.routing_overlaps:
         console.print("[bold]Routing overlap[/bold]\n")
         for ov in report.routing_overlaps:
@@ -127,6 +135,19 @@ def render_conflict_report(
             console.print(f"  {display_path(ov.path_b, root)}")
             console.print(f"  Similarity: {ov.similarity:.0%} (threshold: {report.threshold:.0%})")
             console.print(f"  Shared terms: {', '.join(ov.shared_terms[:8])}")
+            console.print()
+
+    if report.containment_overlaps:
+        console.print("[bold]Containment overlap[/bold]\n")
+        for co in report.containment_overlaps:
+            console.print(f'[yellow]![/yellow] "{co.skill_a}" and "{co.skill_b}"')
+            console.print(f"  {display_path(co.path_a, root)}")
+            console.print(f"  {display_path(co.path_b, root)}")
+            console.print(
+                f"  Containment: {co.containment:.0%} (Jaccard: {co.jaccard:.0%}) — "
+                "one looks like a vague superset/subset of the other"
+            )
+            console.print(f"  Shared terms: {', '.join(co.shared_terms[:8])}")
             console.print()
 
 

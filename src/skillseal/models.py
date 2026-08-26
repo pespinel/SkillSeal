@@ -164,17 +164,54 @@ class RoutingOverlapConflict(BaseModel):
     shared_terms: list[str]
 
 
+class ContainmentConflict(BaseModel):
+    """One skill's vocabulary is largely contained within another's even though
+
+    Jaccard similarity is low (`|a∩b| / min(|a|,|b|)` is high) — a vague skill
+    that's a near-subset/superset of a more specific one, which steals routing
+    traffic without looking similar by union-based similarity.
+    """
+
+    skill_a: str
+    skill_b: str
+    path_a: Path
+    path_b: Path
+    containment: float
+    jaccard: float
+    shared_terms: list[str]
+
+
+class NearDuplicateNameConflict(BaseModel):
+    """Two skills whose frontmatter `name` values are near-identical (edit
+
+    distance <= 1, or equal after normalizing case/separators) — not an exact
+    collision, but confusing for both agents and humans.
+    """
+
+    name_a: str
+    name_b: str
+    path_a: Path
+    path_b: Path
+
+
 class ConflictReport(BaseModel):
     """Result of scanning a directory of skills for cross-skill conflicts."""
 
     threshold: float
     skills_scanned: int
     duplicate_names: list[DuplicateNameConflict] = Field(default_factory=list)
+    near_duplicate_names: list[NearDuplicateNameConflict] = Field(default_factory=list)
     routing_overlaps: list[RoutingOverlapConflict] = Field(default_factory=list)
+    containment_overlaps: list[ContainmentConflict] = Field(default_factory=list)
 
     @property
     def has_conflicts(self) -> bool:
-        return bool(self.duplicate_names or self.routing_overlaps)
+        return bool(
+            self.duplicate_names
+            or self.near_duplicate_names
+            or self.routing_overlaps
+            or self.containment_overlaps
+        )
 
 
 class SkillDiff(BaseModel):

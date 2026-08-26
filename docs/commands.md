@@ -32,22 +32,37 @@ is always printed so that gap stays visible even without `--require-tests`.
 ## `skillseal conflicts <path>`
 
 Scans every skill under `path` *together* rather than one at a time, and
-flags two things `check`/`test` can't see in isolation:
+flags four things `check`/`test` can't see in isolation:
 
 - **Duplicate names** — two skills declaring the same frontmatter `name`
   (usually a copy-paste leftover).
+- **Near-duplicate names** — names one character-edit apart, or equal once
+  case/`-`/`_`/whitespace are normalized (`code-review` vs `code_review`).
+  Not an exact collision, but confusing for both agents and humans.
 - **Routing overlap** — two skills whose vocabulary (name + description +
   `keywords:`) is similar enough that an agent likely can't reliably tell
   them apart, using the same term-matching `HeuristicRoutingEvaluator` uses
   for routing tests, compared pairwise via Jaccard similarity.
+- **Containment overlap** — a pair below the Jaccard threshold but where one
+  skill's vocabulary is still mostly *contained* in the other's (overlap
+  coefficient `|a∩b| / min(|a|,|b|)`). Jaccard is length-sensitive, so a
+  terse, vague skill whose vocabulary is a near-subset of a longer, specific
+  one scores *low* similarity — even though that's the most dangerous overlap
+  there is, since the vague skill can steal routing traffic from the specific
+  one without ever looking similar by union-based similarity.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--threshold <float>` | `0.5`\* | Minimum vocabulary similarity (Jaccard) to flag as overlap. |
+| `--threshold <float>` | `0.5`\* | Minimum vocabulary similarity (Jaccard) to flag as a routing overlap. |
+| `--containment-threshold <float>` | `0.8`\*\* | Minimum containment coefficient to flag, for pairs below `--threshold`. |
 | `--against <path>` | none | Check `path` against this broader corpus instead of all-pairs within `path`. |
 | `--format terminal\|json` | `terminal` | Output format. |
 
 \* Or `conflict_threshold` in [`skillseal.toml`](configuration.md#skillsealtoml).
+\*\* Or `containment_threshold` in [`skillseal.toml`](configuration.md#skillsealtoml).
+
+A pair is only ever reported once: if it clears `--threshold` it's a routing
+overlap, not also a containment overlap.
 
 Without `--against`, every skill under `path` is compared against every
 other. With it, only pairs involving at least one skill from `path` are
@@ -59,11 +74,11 @@ existing corpus against itself on every run:
 skillseal conflicts ./skills/my-new-skill --against ./skills
 ```
 
-A skill can opt specific others out of routing-overlap comparison — useful
-for deliberately similar variants — via `conflict_ignore` in its frontmatter
-(matched by name or by a path substring; this only suppresses the routing-
-overlap check, not duplicate-name detection, since a real name collision is
-rarely something you actually want to allow):
+A skill can opt specific others out of routing/containment-overlap comparison
+— useful for deliberately similar variants — via `conflict_ignore` in its
+frontmatter (matched by name or by a path substring; this only suppresses the
+vocabulary-overlap checks, not the two name-based checks, since a real or
+near-duplicate name is rarely something you actually want to allow):
 
 ```yaml
 ---

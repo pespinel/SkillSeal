@@ -26,6 +26,7 @@ class Config:
     long_section_word_threshold: int = 800
     max_top_level_sections: int = 8
     conflict_threshold: float = 0.5
+    containment_threshold: float = 0.8
     routing_threshold: float = 0.9
 
 

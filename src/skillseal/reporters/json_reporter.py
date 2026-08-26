@@ -106,6 +106,15 @@ def conflict_report_to_json(report: ConflictReport, root: Path | None = None) ->
             }
             for d in report.duplicate_names
         ],
+        "near_duplicate_names": [
+            {
+                "name_a": nd.name_a,
+                "name_b": nd.name_b,
+                "path_a": display_path(nd.path_a, root),
+                "path_b": display_path(nd.path_b, root),
+            }
+            for nd in report.near_duplicate_names
+        ],
         "routing_overlaps": [
             {
                 "skill_a": o.skill_a,
@@ -116,6 +125,18 @@ def conflict_report_to_json(report: ConflictReport, root: Path | None = None) ->
                 "shared_terms": o.shared_terms,
             }
             for o in report.routing_overlaps
+        ],
+        "containment_overlaps": [
+            {
+                "skill_a": c.skill_a,
+                "skill_b": c.skill_b,
+                "path_a": display_path(c.path_a, root),
+                "path_b": display_path(c.path_b, root),
+                "containment": c.containment,
+                "jaccard": c.jaccard,
+                "shared_terms": c.shared_terms,
+            }
+            for c in report.containment_overlaps
         ],
     }
 

@@ -234,6 +234,13 @@ def conflicts(
             "all-pairs within <path> (e.g. a new skill against the whole skills repo)."
         ),
     ] = None,
+    containment_threshold: Annotated[
+        float | None,
+        typer.Option(
+            help="Minimum overlap/containment coefficient to flag as a vague "
+            "superset/subset, for pairs below --threshold. Defaults to skillseal.toml, or 0.8."
+        ),
+    ] = None,
     format: Annotated[OutputFormat, typer.Option(help="Output format.")] = OutputFormat.TERMINAL,
 ) -> None:
     """Find cross-skill conflicts: duplicate names and likely routing overlap."""
@@ -246,8 +253,11 @@ def conflicts(
 
     config = _load_config_or_exit(path)
     resolved_threshold = threshold if threshold is not None else config.conflict_threshold
+    resolved_containment_threshold = (
+        containment_threshold if containment_threshold is not None else config.containment_threshold
+    )
 
-    report = find_conflicts(path, resolved_threshold, against)
+    report = find_conflicts(path, resolved_threshold, against, resolved_containment_threshold)
     if report.skills_scanned == 0:
         err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {path}")
         raise typer.Exit(code=2)

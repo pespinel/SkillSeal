@@ -64,6 +64,7 @@ max_lines = 300                 # default: 500
 long_section_word_threshold = 1000  # default: 800
 max_top_level_sections = 10     # default: 8
 conflict_threshold = 0.6        # default: 0.5 — see `conflicts` in Commands
+containment_threshold = 0.9     # default: 0.8 — see `conflicts` in Commands
 routing_threshold = 0.85        # default: 0.9 — see `test` in Commands
 ```
 

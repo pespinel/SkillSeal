@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from skillseal.conflicts import find_conflicts
+from skillseal.conflicts import (
+    _containment,
+    _edit_distance_le_1,
+    _is_near_duplicate_name,
+    _jaccard,
+    find_conflicts,
+)
 
 
 def _write_skill(
@@ -165,3 +171,96 @@ def test_against_only_reports_pairs_involving_target(tmp_path: Path) -> None:
         "gamma-reviewer",
         "alpha-reviewer",
     }
+
+
+# --- pure helpers -----------------------------------------------------------
+
+
+def test_containment_is_asymmetric_length_insensitive() -> None:
+    small = {"payment", "audit", "code"}
+    big = {"payment", "audit", "code", "compliance", "encryption", "tokenization", "merchant"}
+    assert _jaccard(small, big) < 0.5
+    assert _containment(small, big) == 1.0
+
+
+def test_edit_distance_le_1_substitution() -> None:
+    assert _edit_distance_le_1("code-review", "code-reviaw")
+
+
+def test_edit_distance_le_1_insertion() -> None:
+    assert _edit_distance_le_1("code-review", "code-reviews")
+
+
+def test_edit_distance_of_2_is_not_le_1() -> None:
+    # "reviewer" needs two insertions ("er") over "review" - deliberately out
+    # of scope for the Levenshtein-1/normalized-form heuristic.
+    assert not _edit_distance_le_1("code-review", "code-reviewer")
+
+
+def test_is_near_duplicate_name_normalized_separators() -> None:
+    assert _is_near_duplicate_name("code-review", "code_review")
+
+
+def test_is_near_duplicate_name_exact_match_is_not_near_duplicate() -> None:
+    assert not _is_near_duplicate_name("code-review", "code-review")
+
+
+def test_is_near_duplicate_name_unrelated_names() -> None:
+    assert not _is_near_duplicate_name("code-review", "poem-writer")
+
+
+# --- find_conflicts integration ---------------------------------------------
+
+
+def test_near_duplicate_name_detected(tmp_path: Path) -> None:
+    _write_skill(tmp_path, "a", "code-review", "Use this skill when reviewing pull requests.")
+    _write_skill(tmp_path, "b", "code_review", "Use this skill when writing a poem about trees.")
+
+    report = find_conflicts(tmp_path)
+
+    assert len(report.near_duplicate_names) == 1
+    nd = report.near_duplicate_names[0]
+    assert {nd.name_a, nd.name_b} == {"code-review", "code_review"}
+
+
+def test_exact_duplicate_name_not_also_reported_as_near_duplicate(tmp_path: Path) -> None:
+    _write_skill(tmp_path, "a", "helper", "Use this skill when doing task A for the user.")
+    _write_skill(tmp_path, "b", "helper", "Use this skill when doing task B for the user.")
+
+    report = find_conflicts(tmp_path)
+
+    assert report.near_duplicate_names == []
+
+
+_VAGUE_DESC = "Use this skill when reviewing payment code for security issues."
+_SPECIFIC_DESC = (
+    "Use this skill when reviewing payment code for security issues, checking "
+    "encryption of card numbers, validating tokenization flows, and auditing "
+    "merchant account configurations for PCI compliance across the pipeline."
+)
+
+
+def test_containment_overlap_detected_for_vague_subset(tmp_path: Path) -> None:
+    _write_skill(tmp_path, "a", "quick-check", _VAGUE_DESC)
+    _write_skill(tmp_path, "b", "thorough-audit", _SPECIFIC_DESC)
+
+    report = find_conflicts(tmp_path, threshold=0.9, containment_threshold=0.7)
+
+    assert report.routing_overlaps == []
+    assert len(report.containment_overlaps) == 1
+    co = report.containment_overlaps[0]
+    assert {co.skill_a, co.skill_b} == {"quick-check", "thorough-audit"}
+    assert co.containment > co.jaccard
+    assert co.containment >= 0.7
+
+
+def test_containment_overlap_not_double_reported_when_also_routing_overlap(
+    tmp_path: Path,
+) -> None:
+    _write_skill(tmp_path, "a", "quick-check", _VAGUE_DESC)
+    _write_skill(tmp_path, "b", "thorough-audit", _SPECIFIC_DESC)
+
+    report = find_conflicts(tmp_path, threshold=0.1, containment_threshold=0.1)
+
+    assert len(report.routing_overlaps) == 1
+    assert report.containment_overlaps == []
