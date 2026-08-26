@@ -1,4 +1,4 @@
-"""Rich-based terminal output for `skillseal check`, `test`, `conflicts`, and `diff`."""
+"""Rich-based terminal output for `skillseal check/test/conflicts/diff/rules/explain`."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from skillseal.models import (
     SkillDiff,
     SkillReport,
 )
+from skillseal.rules.base import RULE_THRESHOLD_FIELD, Rule
 from skillseal.scoring import category_status
 
 _STATUS_COLOR = {"PASS": "green", "WARN": "yellow", "FAIL": "red"}
@@ -159,3 +160,23 @@ def render_skill_diff(diff: SkillDiff, console: Console) -> None:
 
     if not diff.added and not diff.removed:
         console.print("\n[dim]No finding changes.[/dim]")
+
+
+def render_rules(rules: list[Rule], console: Console) -> None:
+    id_width = max((len(r.id) for r in rules), default=2)
+    console.print(f"{'ID':<{id_width}}  {'CATEGORY':<15}{'SEVERITY':<9}{'CONFIG':<7}DESCRIPTION")
+    for r in sorted(rules, key=lambda r: r.id):
+        configurable = "yes" if r.id in RULE_THRESHOLD_FIELD else "no"
+        console.print(
+            f"{r.id:<{id_width}}  {r.category.value:<15}{r.severity.value:<9}"
+            f"{configurable:<7}{r.description}"
+        )
+
+
+def render_rule_explain(rule: Rule, console: Console) -> None:
+    console.print(f"[bold]{rule.id}[/bold]  ({rule.category.value}, {rule.severity.value})\n")
+    console.print(rule.description)
+    field = RULE_THRESHOLD_FIELD.get(rule.id)
+    if field:
+        console.print(f"\nConfigurable via skillseal.toml: [thresholds] {field} = <value>")
+    console.print(f"\nSuppress: skillseal check --ignore {rule.id}")

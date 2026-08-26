@@ -27,12 +27,15 @@ from skillseal.reporters.json_reporter import (
     check_reports_to_json,
     conflict_report_to_json,
     routing_summaries_to_json,
+    rules_to_json,
     skill_diff_to_json,
 )
 from skillseal.reporters.terminal import (
     render_check_reports,
     render_conflict_report,
     render_routing_summaries,
+    render_rule_explain,
+    render_rules,
     render_skill_diff,
 )
 from skillseal.routing.evaluator import (
@@ -42,6 +45,7 @@ from skillseal.routing.evaluator import (
     RoutingEvaluator,
 )
 from skillseal.routing.runner import RoutingConfigError, run_routing_tests_for_path
+from skillseal.rules.base import build_registry
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
@@ -269,6 +273,30 @@ def diff_command(
         render_skill_diff(diff, console)
 
     raise typer.Exit(code=1 if diff.regressed else 0)
+
+
+@app.command()
+def rules(
+    format: Annotated[OutputFormat, typer.Option(help="Output format.")] = OutputFormat.TERMINAL,
+) -> None:
+    """List all lint rules: id, category, severity, description, and configurability."""
+    registry = build_registry()
+    if format is OutputFormat.JSON:
+        print(json.dumps(rules_to_json(registry), indent=2))
+    else:
+        render_rules(registry, console)
+
+
+@app.command()
+def explain(
+    rule_id: Annotated[str, typer.Argument(help="Rule id, e.g. rm-rf or description-too-short.")],
+) -> None:
+    """Show what a rule checks, its category/severity, and how to suppress it."""
+    rule = next((r for r in build_registry() if r.id == rule_id), None)
+    if rule is None:
+        err_console.print(f"[red]Error:[/red] unknown rule id: {rule_id}")
+        raise typer.Exit(code=2)
+    render_rule_explain(rule, console)
 
 
 if __name__ == "__main__":

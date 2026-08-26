@@ -105,6 +105,31 @@ the skill worse?" CI check.
 |---|---|---|
 | `--format terminal\|json` | `terminal` | Output format. |
 
+## `skillseal rules`
+
+Lists every lint rule: id, category, severity, one-line description, and
+whether it's tunable via [`skillseal.toml`](configuration.md#skillsealtoml).
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--format terminal\|json` | `terminal` | Output format. |
+
+## `skillseal explain <rule-id>`
+
+Shows one rule's category, severity, description, its `skillseal.toml`
+threshold key (if configurable), and how to suppress it with `--ignore`.
+Exits `2` for an unknown rule id.
+
+```
+$ uv run skillseal explain rm-rf
+
+rm-rf  (SECURITY, ERROR)
+
+Flags recursive force-delete commands.
+
+Suppress: skillseal check --ignore rm-rf
+```
+
 ## Exit codes (all commands)
 
 | Code | Meaning |

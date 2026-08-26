@@ -20,6 +20,7 @@ from skillseal.models import (
     SkillReport,
 )
 from skillseal.reporters.terminal import display_path
+from skillseal.rules.base import RULE_THRESHOLD_FIELD, Rule
 
 SCHEMA_VERSION = 2
 
@@ -128,4 +129,21 @@ def skill_diff_to_json(diff: SkillDiff, root: Path | None = None) -> dict[str, A
         "regressed": diff.regressed,
         "added": [_finding_to_dict(f) for f in diff.added],
         "removed": [_finding_to_dict(f) for f in diff.removed],
+    }
+
+
+def rules_to_json(rules: list[Rule]) -> dict[str, Any]:
+    return {
+        "version": SCHEMA_VERSION,
+        "rules": [
+            {
+                "id": r.id,
+                "category": r.category.value,
+                "severity": r.severity.value,
+                "description": r.description,
+                "configurable": r.id in RULE_THRESHOLD_FIELD,
+                "threshold_field": RULE_THRESHOLD_FIELD.get(r.id),
+            }
+            for r in sorted(rules, key=lambda r: r.id)
+        ],
     }

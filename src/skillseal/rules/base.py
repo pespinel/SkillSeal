@@ -81,6 +81,18 @@ def build_registry() -> list[Rule]:
     return rules
 
 
+# Rule id -> the Config field (skillseal.toml [thresholds] key) that tunes it.
+# Kept as a small hand-maintained map rather than inferred from fn source, since
+# most rules ignore `config` entirely and there's no other signal to key off.
+RULE_THRESHOLD_FIELD: dict[str, str] = {
+    "description-too-short": "min_description_length",
+    "skill-too-large": "token_warn_threshold",
+    "too-many-lines": "max_lines",
+    "section-too-long": "long_section_word_threshold",
+    "too-many-responsibilities": "max_top_level_sections",
+}
+
+
 # --- shared text helpers -------------------------------------------------
 
 # Matches ``` or ~~~ fences (CommonMark treats them as equivalent); the

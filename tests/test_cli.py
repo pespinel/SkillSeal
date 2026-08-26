@@ -232,3 +232,38 @@ def test_version_matches_pyproject() -> None:
 
     pyproject = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text())
     assert __version__ == pyproject["project"]["version"]
+
+
+def test_rules_exits_zero_and_lists_known_id() -> None:
+    result = runner.invoke(app, ["rules"])
+    assert result.exit_code == 0
+    assert "rm-rf" in result.stdout
+
+
+def test_rules_json_format_is_valid_json() -> None:
+    result = runner.invoke(app, ["rules", "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert payload["version"] == 2
+    ids = {r["id"] for r in payload["rules"]}
+    assert "rm-rf" in ids
+    configurable = {r["id"]: r["threshold_field"] for r in payload["rules"]}
+    assert configurable["description-too-short"] == "min_description_length"
+    assert configurable["rm-rf"] is None
+
+
+def test_explain_known_rule_prints_detail() -> None:
+    result = runner.invoke(app, ["explain", "rm-rf"])
+    assert result.exit_code == 0
+    assert "SECURITY" in result.stdout
+    assert "--ignore rm-rf" in result.stdout
+
+
+def test_explain_configurable_rule_shows_threshold() -> None:
+    result = runner.invoke(app, ["explain", "description-too-short"])
+    assert result.exit_code == 0
+    assert "min_description_length" in result.stdout
+
+
+def test_explain_unknown_rule_exits_two() -> None:
+    result = runner.invoke(app, ["explain", "not-a-real-rule"])
+    assert result.exit_code == 2
