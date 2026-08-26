@@ -21,8 +21,9 @@ from skillseal import __version__
 from skillseal.config import Config, ConfigError, load_config
 from skillseal.conflicts import find_conflicts
 from skillseal.diff import DiffTargetError, diff_skills
-from skillseal.linter import lint_path
+from skillseal.linter import lint_path, lint_skill
 from skillseal.models import Severity
+from skillseal.parser import parse_skill
 from skillseal.reporters.github import render_check_reports_github
 from skillseal.reporters.json_reporter import (
     check_reports_to_json,
@@ -47,6 +48,7 @@ from skillseal.routing.evaluator import (
 )
 from skillseal.routing.runner import RoutingConfigError, run_routing_tests_for_path
 from skillseal.rules.base import build_registry
+from skillseal.scaffold import ScaffoldError, scaffold_skill
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
@@ -319,6 +321,28 @@ def explain(
         err_console.print(f"[red]Error:[/red] unknown rule id: {rule_id}")
         raise typer.Exit(code=2)
     render_rule_explain(rule, console)
+
+
+@app.command()
+def init(
+    name: Annotated[str, typer.Argument(help="Skill name, kebab-case, e.g. pdf-form-filler.")],
+    path: Annotated[Path, typer.Option(help="Directory to create the skill in.")] = Path("."),
+) -> None:
+    """Scaffold a new skill: a SKILL.md that scores 100/100, plus a skillseal.yaml starter."""
+    dest_dir = path / name
+    try:
+        skill_md, skillseal_yaml = scaffold_skill(dest_dir, name)
+    except ScaffoldError as exc:
+        err_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    report = lint_skill(parse_skill(skill_md))
+    console.print(f"[green]Created[/green] {skill_md}")
+    console.print(f"[green]Created[/green] {skillseal_yaml}")
+    console.print(f"\nScore: {report.score}/100")
+    console.print("\nFill in the [dim][bracketed][/dim] placeholders, then run:")
+    console.print(f"  skillseal check {dest_dir}")
+    console.print(f"  skillseal test {dest_dir}")
 
 
 if __name__ == "__main__":

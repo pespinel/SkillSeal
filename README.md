@@ -43,6 +43,7 @@ uvx skillseal check ./skills
 ## Quickstart
 
 ```bash
+skillseal init my-new-skill       # scaffold a skill that scores 100/100
 skillseal check ./skills          # lint: spec, quality, security, portability
 skillseal test ./skills           # routing tests (skillseal.yaml)
 skillseal conflicts ./skills      # duplicate names / routing overlap between skills

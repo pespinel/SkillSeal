@@ -22,6 +22,7 @@ _KNOWN_KEYS = {
     "allowed-tools",
     "keywords",
     "conflict_ignore",
+    "template",
 }
 _MAX_NAME_LEN = 64  # agentskills.io: name must be 1-64 characters
 # min description length is our own heuristic floor (overridable via skillseal.toml);
@@ -211,6 +212,17 @@ def _unknown_frontmatter_keys(skill: Skill, config: Config) -> list[Draft]:
     ]
 
 
+def _detected_as_template(skill: Skill, config: Config) -> list[Draft]:
+    if not skill.is_template:
+        return []
+    return [
+        Draft(
+            message="Skill detected as a template — vague/missing-when-to-use and "
+            "dangling-file-reference findings are suppressed while it looks unfinished."
+        )
+    ]
+
+
 RULES: list[Rule] = [
     FuncRule(
         id="missing-frontmatter",
@@ -302,5 +314,12 @@ RULES: list[Rule] = [
         severity=Severity.INFO,
         description="Frontmatter should only use recognized keys.",
         fn=_unknown_frontmatter_keys,
+    ),
+    FuncRule(
+        id="detected-as-template",
+        category=Category.SPECIFICATION,
+        severity=Severity.INFO,
+        description="Surfaces when a skill is detected as a template or placeholder.",
+        fn=_detected_as_template,
     ),
 ]

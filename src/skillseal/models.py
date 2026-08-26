@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+_TEMPLATE_DIR_RE = re.compile(r"^templates?$", re.IGNORECASE)
+_TEMPLATE_PLACEHOLDER_RE = re.compile(
+    r"\bTODO\b|\[[^\]]*\b(describe|placeholder)\b[^\]]*\]", re.IGNORECASE
+)
 
 
 class Severity(StrEnum):
@@ -58,6 +64,19 @@ class Skill(BaseModel):
     @property
     def dir_name(self) -> str:
         return self.dir.name
+
+    @property
+    def is_template(self) -> bool:
+        """Heuristic: explicit `template: true`, a placeholder-y description
+
+        (literal "TODO" or a `[describe ...]`-style bracket marker), or a
+        parent directory literally named template/templates.
+        """
+        if self.frontmatter.get("template") is True:
+            return True
+        if _TEMPLATE_PLACEHOLDER_RE.search(self.description):
+            return True
+        return any(_TEMPLATE_DIR_RE.match(part) for part in self.dir.parts)
 
 
 class SkillReport(BaseModel):

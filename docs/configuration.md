@@ -4,9 +4,9 @@
 
 Beyond the fields defined by the [agentskills.io spec](https://agentskills.io/specification)
 (`name`, `description`, `license`, `compatibility`, `metadata`,
-`allowed-tools`), SkillSeal recognizes two extra frontmatter keys of its own.
-Both are optional and inert to any other tool — they just won't trigger the
-`unknown-frontmatter-keys` finding here.
+`allowed-tools`), SkillSeal recognizes three extra frontmatter keys of its
+own. All are optional and inert to any other tool — they just won't trigger
+the `unknown-frontmatter-keys` finding here.
 
 ```yaml
 ---
@@ -18,6 +18,7 @@ keywords:
   - refund
 conflict_ignore:
   - legacy-payment-check
+template: false
 ---
 ```
 
@@ -27,6 +28,8 @@ conflict_ignore:
   description doesn't naturally contain the exact words users are likely to
   type.
 - **`conflict_ignore`** — see [`conflicts`](commands.md#skillseal-conflicts-path).
+- **`template`** — set to `true` to mark a skill as an intentionally
+  unfinished template; see [`init`](commands.md#skillseal-init-name).
 
 ## `skillseal.yaml`
 

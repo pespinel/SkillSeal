@@ -269,6 +269,31 @@ def test_explain_unknown_rule_exits_two() -> None:
     assert result.exit_code == 2
 
 
+def test_init_creates_a_skill_that_scores_100(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["init", "pdf-form-filler", "--path", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert (tmp_path / "pdf-form-filler" / "SKILL.md").exists()
+    assert (tmp_path / "pdf-form-filler" / "skillseal.yaml").exists()
+    assert "Score: 100/100" in result.stdout
+
+    check_result = runner.invoke(
+        app, ["check", str(tmp_path / "pdf-form-filler"), "--fail-on", "error"]
+    )
+    assert check_result.exit_code == 0
+
+
+def test_init_invalid_name_exits_two(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["init", "Bad_Name", "--path", str(tmp_path)])
+    assert result.exit_code == 2
+
+
+def test_init_existing_directory_exits_two(tmp_path: Path) -> None:
+    (tmp_path / "my-skill").mkdir()
+    result = runner.invoke(app, ["init", "my-skill", "--path", str(tmp_path)])
+    assert result.exit_code == 2
+
+
 def test_check_github_format_emits_workflow_commands() -> None:
     result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--format", "github"])
     assert result.exit_code == 1

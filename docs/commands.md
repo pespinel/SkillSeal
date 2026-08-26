@@ -1,5 +1,31 @@
 # Commands
 
+## `skillseal init <name>`
+
+Scaffolds `<path>/<name>/SKILL.md` and `<path>/<name>/skillseal.yaml` — a
+skill that scores 100/100 out of the box, with `[bracketed]` placeholders for
+everything you still need to fill in (what it does, when it triggers, and a
+starter set of `should_trigger`/`should_not_trigger` routing prompts). The
+blank page is the reason nobody writes routing tests; this gives you a
+non-blank one.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--path <dir>` | `.` | Directory to create `<name>/` in. |
+
+`<name>` must be lowercase kebab-case (letters, digits, hyphens) — it becomes
+both the directory name and the frontmatter `name`, which have to match (see
+`name-directory-mismatch`). Fails with exit `2` if the name is invalid or the
+target directory already exists.
+
+A freshly-scaffolded skill (or any skill with a `[bracketed]` placeholder
+description, a literal `TODO`, `template: true` in its frontmatter, or a
+parent directory literally named `template`/`templates`) is recognized as a
+template: `description-too-vague`, `description-missing-when-to-use`,
+`description-too-short`, and `dangling-file-reference` are suppressed while
+it looks unfinished, so `check` doesn't score it like a broken production
+skill. `check` surfaces this as an INFO `detected-as-template` finding.
+
 ## `skillseal check <path>`
 
 Runs every rule (SPECIFICATION, QUALITY, SECURITY, PORTABILITY) against each
