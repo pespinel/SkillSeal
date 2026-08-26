@@ -13,7 +13,7 @@ only works on your machine. SkillSeal is a local-first, offline-first CLI
 that lints, scores, and routing-tests `SKILL.md` files — catching what a
 manual read-through misses, before an agent does.
 
-![skillseal check output: two WARNs, a FAIL on rm-rf, a WARN on an absolute path, score 86/100](docs/assets/example-check-output.svg)
+![skillseal check output: two WARNs, a FAIL on rm-rf, a WARN on an absolute path, score 86/100](https://raw.githubusercontent.com/pespinel/SkillSeal/main/docs/assets/example-check-output.svg)
 
 ## What it catches
 
