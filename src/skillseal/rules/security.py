@@ -47,6 +47,36 @@ _INTERP_SHELL_RE = re.compile(
     r"\b(rm|curl|wget|ssh|cat|mv|cp|eval|exec)\b[^\n]*(\$\{[^}\n]+\}|\{\{[^}\n]+\}\}|\{[a-zA-Z_][\w.]*\})"
 )
 
+# --- prompt-injection surface ----------------------------------------------
+#
+# SKILL.md is text loaded directly into an agent's context, not just a doc a
+# human reads — these target hidden or override-style instructions embedded
+# in the prose itself, distinct from the dangerous-*command* rules above.
+
+# Zero-width/joiner marks (U+200B-200F), bidi embedding/override controls
+# (U+202A-202E), and a mid-text BOM (U+FEFF) — a leading file BOM is already
+# stripped in parser.py, so any of these found here is embedded, not the
+# file's own encoding artifact.
+_HIDDEN_UNICODE_RE = re.compile(r"[\u200b-\u200f\u202a-\u202e\ufeff]")
+_INSTRUCTION_OVERRIDE_RE = re.compile(
+    r"ignore\s+(all\s+|the\s+)?previous\s+instructions"
+    r"|disregard\s+(all\s+|the\s+)?(above|previous)"
+    r"|you\s+are\s+now\b"
+    r"|<\s*important\s*>"
+    r"|\[\s*system\s*\]"
+    r"|system\s+prompt\s*:",
+    re.IGNORECASE,
+)
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+# {40,} chars of base64 alphabet, then require mixed case so a lowercase (or
+# uppercase) hex hash doesn't false-positive.
+_BASE64_BLOB_RE = re.compile(r"[A-Za-z0-9+/]{40,}={0,2}")
+_EXFIL_REACH_RE = re.compile(r"https?://|\b(curl|fetch|invoke-webrequest|iwr)\b", re.IGNORECASE)
+_EXFIL_SECRET_RE = re.compile(
+    r"~/\.aws\b|~/\.ssh\b|\.env\b|\$GITHUB_TOKEN\b|\bAPI_KEY\b", re.IGNORECASE
+)
+_EXFIL_PROXIMITY_LINES = 5
+
 
 def _aggregate(matches: list[tuple[str, int]], message: str, skill: Skill) -> list[Draft]:
     if not matches:
@@ -251,6 +281,67 @@ def _interpolated_shell_input(skill: Skill, config: Config) -> list[Draft]:
     )
 
 
+def _hidden_unicode(skill: Skill, config: Config) -> list[Draft]:
+    return _aggregate(
+        _matches_in_body(skill, _HIDDEN_UNICODE_RE),
+        "Potential risk: invisible or directional-override Unicode character found — "
+        "a classic hidden-instruction vector.",
+        skill,
+    )
+
+
+def _instruction_override_language(skill: Skill, config: Config) -> list[Draft]:
+    return _aggregate(
+        _matches_in_body(skill, _INSTRUCTION_OVERRIDE_RE),
+        "Potential risk: language resembling an instruction override "
+        '(e.g. "ignore previous instructions") found in the skill body.',
+        skill,
+    )
+
+
+def _html_comment_in_body(skill: Skill, config: Config) -> list[Draft]:
+    return _aggregate(
+        _matches_in_body(skill, _HTML_COMMENT_RE),
+        "SKILL.md contains an HTML comment — usually benign, but the standard place "
+        "to hide instructions from a human reviewer while an agent still reads it.",
+        skill,
+    )
+
+
+def _long_base64_blob(skill: Skill, config: Config) -> list[Draft]:
+    matches = [
+        (m.group(0), m.start())
+        for m in _BASE64_BLOB_RE.finditer(skill.body)
+        if any(c.islower() for c in m.group(0)) and any(c.isupper() for c in m.group(0))
+    ]
+    return _aggregate(
+        matches,
+        "Potential risk: long base64-like blob found, which may hide an encoded "
+        "instruction or payload.",
+        skill,
+    )
+
+
+def _exfiltration_shape(skill: Skill, config: Config) -> list[Draft]:
+    reach_lines = {offset_to_line(skill, m.start()) for m in _EXFIL_REACH_RE.finditer(skill.body)}
+    secret_lines = {offset_to_line(skill, m.start()) for m in _EXFIL_SECRET_RE.finditer(skill.body)}
+    hits = [
+        (r, s) for r in reach_lines for s in secret_lines if abs(r - s) <= _EXFIL_PROXIMITY_LINES
+    ]
+    if not hits:
+        return []
+    detail = f"{len(hits)} co-located occurrence(s) within {_EXFIL_PROXIMITY_LINES} lines"
+    return [
+        Draft(
+            message="Potential risk: a network call and a secret-ish reference appear close "
+            "together — reading a secret and reaching the network are each fine alone, but "
+            "co-located, they're the exfiltration shape.",
+            detail=detail,
+            line=min(min(pair) for pair in hits),
+        )
+    ]
+
+
 def _path_traversal(skill: Skill, config: Config) -> list[Draft]:
     skill_root = skill.dir.resolve()
     escapes = []
@@ -358,5 +449,41 @@ RULES: list[Rule] = [
         severity=Severity.WARNING,
         description="Flags eval/exec/sudo/chmod-777/secret-read patterns inside bundled files.",
         fn=_bundled_risky_command,
+    ),
+    FuncRule(
+        id="hidden-unicode-chars",
+        category=Category.SECURITY,
+        severity=Severity.ERROR,
+        description="Flags invisible or directional-override Unicode characters.",
+        fn=_hidden_unicode,
+    ),
+    FuncRule(
+        id="instruction-override-language",
+        category=Category.SECURITY,
+        severity=Severity.WARNING,
+        description='Flags language resembling an instruction override, e.g. "ignore '
+        'previous instructions".',
+        fn=_instruction_override_language,
+    ),
+    FuncRule(
+        id="html-comment-in-body",
+        category=Category.SECURITY,
+        severity=Severity.INFO,
+        description="Surfaces HTML comments in the skill body — the standard hiding place.",
+        fn=_html_comment_in_body,
+    ),
+    FuncRule(
+        id="long-base64-blob",
+        category=Category.SECURITY,
+        severity=Severity.WARNING,
+        description="Flags long mixed-case base64-like blobs that may hide encoded content.",
+        fn=_long_base64_blob,
+    ),
+    FuncRule(
+        id="exfiltration-shape",
+        category=Category.SECURITY,
+        severity=Severity.ERROR,
+        description="Flags a network call co-located with a secret-ish reference.",
+        fn=_exfiltration_shape,
     ),
 ]
