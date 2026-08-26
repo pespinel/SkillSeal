@@ -10,8 +10,19 @@
 description that never routes correctly, an oversized file that eats context,
 a `curl | sh` buried in a code block, a hardcoded `/Users/you/...` path that
 only works on your machine. SkillSeal is a local-first, offline-first CLI
-that lints, scores, and routing-tests `SKILL.md` files, so you catch that
-before an agent does.
+that lints, scores, and routing-tests `SKILL.md` files — catching what a
+manual read-through misses, before an agent does.
+
+![skillseal check output: two WARNs, a FAIL on rm-rf, a WARN on an absolute path, score 86/100](docs/assets/example-check-output.svg)
+
+## What it catches
+
+| Category | Catches things like |
+|---|---|
+| **Specification** | Invalid frontmatter, a `name` that doesn't match its directory |
+| **Quality** | Vague descriptions, oversized files, dangling file references |
+| **Security** | `rm -rf` / `curl \| sh` in a code block, secret-file reads |
+| **Portability** | Hardcoded `/Users/you/...` paths, OS-specific commands |
 
 **Full docs: <https://pespinel.github.io/skillseal/>**
 
