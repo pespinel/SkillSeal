@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from pathlib import Path
 
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
@@ -164,6 +165,43 @@ def _dangling_file_references(skill: Skill, config: Config) -> list[Draft]:
     ]
 
 
+def _deep_file_references(skill: Skill, config: Config) -> list[Draft]:
+    """Spec: 'Keep file references one level deep from SKILL.md.'"""
+    deep = [
+        (target, offset)
+        for target, offset in local_file_targets(skill.body)
+        if len(Path(target).parent.parts) > 1
+    ]
+    if not deep:
+        return []
+    return [
+        Draft(
+            message="File references should stay one directory level deep from SKILL.md "
+            "(e.g. references/foo.md, not references/sub/foo.md).",
+            detail=", ".join(target for target, _ in deep),
+            line=offset_to_line(skill, deep[0][1]),
+        )
+    ]
+
+
+def _metadata_token_budget(skill: Skill, config: Config) -> list[Draft]:
+    """name+description are loaded into every session's context whether the skill
+
+    activates or not - a much tighter startup budget than the body's.
+    """
+    tokens = estimate_tokens(f"{skill.name} {skill.description}")
+    if tokens <= config.metadata_token_threshold:
+        return []
+    return [
+        Draft(
+            message="name + description exceed the metadata-tier startup budget, paid by "
+            "every installed skill on every session whether it activates or not.",
+            detail=f"~{tokens:,} estimated tokens (threshold: {config.metadata_token_threshold:,})",
+            line=frontmatter_key_line(skill, "description"),
+        )
+    ]
+
+
 RULES: list[Rule] = [
     FuncRule(
         id="skill-too-large",
@@ -220,5 +258,19 @@ RULES: list[Rule] = [
         severity=Severity.INFO,
         description="Local file references should point at files that exist.",
         fn=_dangling_file_references,
+    ),
+    FuncRule(
+        id="deep-file-reference",
+        category=Category.QUALITY,
+        severity=Severity.WARNING,
+        description="File references should stay one directory level deep from SKILL.md.",
+        fn=_deep_file_references,
+    ),
+    FuncRule(
+        id="metadata-token-budget",
+        category=Category.QUALITY,
+        severity=Severity.WARNING,
+        description="name + description should stay under the metadata-tier token budget.",
+        fn=_metadata_token_budget,
     ),
 ]

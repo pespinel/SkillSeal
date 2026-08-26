@@ -69,6 +69,16 @@ def test_invalid_name_format(make_skill) -> None:
     assert _find(skill, "invalid-name-format").line == 2
 
 
+def test_name_too_long(make_skill) -> None:
+    long_name = "a" * 65
+    skill = make_skill(
+        name=long_name,
+        frontmatter={"name": long_name, "description": "Use this when doing things."},
+    )
+    assert "name-too-long" in _run(skill)
+    assert "invalid-name-format" not in _run(skill)
+
+
 def test_name_directory_mismatch(make_skill) -> None:
     skill = make_skill(
         name="other-name",
@@ -76,7 +86,9 @@ def test_name_directory_mismatch(make_skill) -> None:
         frontmatter={"name": "other-name", "description": "Use this when doing things."},
     )
     assert "name-directory-mismatch" in _run(skill)
-    assert _find(skill, "name-directory-mismatch").line == 2
+    finding = _find(skill, "name-directory-mismatch")
+    assert finding.line == 2
+    assert finding.severity.value == "ERROR"
 
 
 def test_missing_description(make_skill) -> None:
@@ -163,3 +175,58 @@ def test_compatibility_too_long(make_skill) -> None:
     )
     assert "compatibility-too-long" in _run(skill)
     assert _find(skill, "compatibility-too-long").line == 4  # 3rd frontmatter key
+
+
+def test_invalid_metadata_type_non_dict(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "metadata": [1, 2],
+        }
+    )
+    assert "invalid-metadata-type" in _run(skill)
+
+
+def test_invalid_metadata_type_non_string_values(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "metadata": {"version": 2},
+        }
+    )
+    assert "invalid-metadata-type" in _run(skill)
+
+
+def test_valid_metadata_not_flagged(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "metadata": {"version": "2"},
+        }
+    )
+    assert "invalid-metadata-type" not in _run(skill)
+
+
+def test_invalid_allowed_tools_type_list(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "allowed-tools": ["Bash", "Read"],
+        }
+    )
+    assert "invalid-allowed-tools-type" in _run(skill)
+
+
+def test_valid_allowed_tools_string_not_flagged(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "allowed-tools": "Bash(git *) Read",
+        }
+    )
+    assert "invalid-allowed-tools-type" not in _run(skill)

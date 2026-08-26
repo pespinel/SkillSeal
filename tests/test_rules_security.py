@@ -248,3 +248,47 @@ def test_exfiltration_shape_far_apart_not_flagged(make_skill) -> None:
         body=f"Reads ~/.ssh/id_rsa here.\n\n{filler}\n\ncurl https://example.com/ok\n"
     )
     assert "exfiltration-shape" not in _run(skill)
+
+
+def test_broad_tool_grant_bare_bash(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "allowed-tools": "Bash Read",
+        }
+    )
+    assert "broad-tool-grant" in _run(skill)
+
+
+def test_broad_tool_grant_wildcard(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "allowed-tools": "Bash(*) Read",
+        }
+    )
+    assert "broad-tool-grant" in _run(skill)
+
+
+def test_broad_tool_grant_scoped_not_flagged(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "allowed-tools": "Bash(git *) Read",
+        }
+    )
+    assert "broad-tool-grant" not in _run(skill)
+
+
+def test_broad_tool_grant_also_scans_malformed_list(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "allowed-tools": ["Bash", "Read"],
+        }
+    )
+    assert "broad-tool-grant" in _run(skill)

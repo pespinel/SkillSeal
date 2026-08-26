@@ -62,6 +62,7 @@ root (so one file at your repo root applies everywhere):
 ```toml
 [thresholds]
 min_description_length = 20     # default: 10
+metadata_token_threshold = 150  # default: 100 — name + description startup budget
 token_warn_threshold = 3000     # default: 5000
 max_lines = 300                 # default: 500
 long_section_word_threshold = 1000  # default: 800

@@ -17,6 +17,7 @@ from skillseal.rules.base import (
     FuncRule,
     Rule,
     extract_code_spans,
+    frontmatter_key_line,
     local_file_targets,
     offset_to_line,
 )
@@ -76,6 +77,11 @@ _EXFIL_SECRET_RE = re.compile(
     r"~/\.aws\b|~/\.ssh\b|\.env\b|\$GITHUB_TOKEN\b|\bAPI_KEY\b", re.IGNORECASE
 )
 _EXFIL_PROXIMITY_LINES = 5
+
+# agentskills.io: 'allowed-tools' is a space-separated string of tool grants
+# (e.g. "Bash(git *) Read"). Bare "Bash" or a "Tool(*)" wildcard pre-approves
+# unrestricted access - a decision a reviewer should see explicitly.
+_BROAD_TOOL_GRANT_RE = re.compile(r"^(Bash|\w+\(\*\))$")
 
 
 def _aggregate(matches: list[tuple[str, int]], message: str, skill: Skill) -> list[Draft]:
@@ -342,6 +348,31 @@ def _exfiltration_shape(skill: Skill, config: Config) -> list[Draft]:
     ]
 
 
+def _tool_grant_tokens(skill: Skill) -> list[str]:
+    raw = skill.frontmatter.get("allowed-tools")
+    if isinstance(raw, str):
+        return raw.split()
+    if isinstance(raw, list):
+        return [str(item) for item in raw]
+    return []
+
+
+def _broad_tool_grant(skill: Skill, config: Config) -> list[Draft]:
+    if skill.frontmatter_error is not None:
+        return []
+    matches = [t for t in _tool_grant_tokens(skill) if _BROAD_TOOL_GRANT_RE.match(t)]
+    if not matches:
+        return []
+    return [
+        Draft(
+            message="'allowed-tools' pre-approves an unrestricted tool grant — a reviewer "
+            "should see this decision explicitly.",
+            detail=f"broad grant(s): {', '.join(sorted(set(matches)))}",
+            line=frontmatter_key_line(skill, "allowed-tools"),
+        )
+    ]
+
+
 def _path_traversal(skill: Skill, config: Config) -> list[Draft]:
     skill_root = skill.dir.resolve()
     escapes = []
@@ -485,5 +516,12 @@ RULES: list[Rule] = [
         severity=Severity.ERROR,
         description="Flags a network call co-located with a secret-ish reference.",
         fn=_exfiltration_shape,
+    ),
+    FuncRule(
+        id="broad-tool-grant",
+        category=Category.SECURITY,
+        severity=Severity.WARNING,
+        description="Flags 'allowed-tools' pre-approving an unrestricted tool grant.",
+        fn=_broad_tool_grant,
     ),
 ]

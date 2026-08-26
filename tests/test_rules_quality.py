@@ -78,3 +78,28 @@ def test_existing_file_reference_passes(make_skill) -> None:
     skill = make_skill(body="See [the guide](./present.md) for details.\n")
     (skill.dir / "present.md").write_text("hello")
     assert "dangling-file-reference" not in _run(skill)
+
+
+def test_deep_file_reference(make_skill) -> None:
+    skill = make_skill(body="See [the guide](./references/sub/deep.md) for details.\n")
+    assert "deep-file-reference" in _run(skill)
+
+
+def test_one_level_file_reference_passes(make_skill) -> None:
+    skill = make_skill(body="See [the guide](./references/shallow.md) for details.\n")
+    assert "deep-file-reference" not in _run(skill)
+
+
+def test_bare_file_reference_passes(make_skill) -> None:
+    skill = make_skill(body="See [the guide](./shallow.md) for details.\n")
+    assert "deep-file-reference" not in _run(skill)
+
+
+def test_metadata_token_budget_exceeded(make_skill) -> None:
+    skill = make_skill(description="word " * 200)
+    assert "metadata-token-budget" in _run(skill)
+
+
+def test_metadata_token_budget_within_limit_not_flagged(make_skill) -> None:
+    skill = make_skill(description="Use this skill when doing the thing that needs doing.")
+    assert "metadata-token-budget" not in _run(skill)

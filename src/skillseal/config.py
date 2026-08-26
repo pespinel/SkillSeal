@@ -21,6 +21,7 @@ class ConfigError(Exception):
 @dataclass(frozen=True)
 class Config:
     min_description_length: int = 10
+    metadata_token_threshold: int = 100
     token_warn_threshold: int = 5000
     max_lines: int = 500
     long_section_word_threshold: int = 800

@@ -190,14 +190,14 @@ $ uv run skillseal check examples/bad-skill
 
 examples/bad-skill/SKILL.md
 
-Specification  WARN
+Specification  FAIL
 Quality        WARN
 Security       FAIL
 Portability    WARN
 
 Issues
 
-WARN  name-directory-mismatch  (line 2)
+FAIL  name-directory-mismatch  (line 2)
       Frontmatter 'name' does not match the skill's directory name.
       name: 'helper', directory: 'bad-skill'
 
@@ -219,13 +219,20 @@ WARN  absolute-path  (line 17)
 
   ... (more findings omitted for brevity — run it yourself to see the rest)
 
-SkillSeal Score: 68/100
+SkillSeal Score: 50/100
 
-Specification   90
+Specification   75
 Quality         60
 Security        40
 Portability     90
 ```
+
+`name-directory-mismatch` is an ERROR: in VS Code/Copilot, a name that
+doesn't match its directory makes the skill silently fail to load — no
+error, just absent — the highest-consequence, lowest-ambiguity defect in the
+ruleset, so it caps the score at 50 like any other SPECIFICATION error
+(see [Exit codes](#exit-codes-all-commands)). `--ignore name-directory-mismatch`
+is the escape hatch for a rename you genuinely can't do yet.
 
 ```
 $ uv run skillseal test examples/bad-skill
