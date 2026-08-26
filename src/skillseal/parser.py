@@ -31,7 +31,16 @@ def discover_skills(path: Path) -> list[Path]:
         if any(part in _SKIP_DIRS or part.startswith(".") for part in rel_parts):
             continue
         found.append(candidate)
-    return sorted(found)
+    found.sort(key=lambda p: len(p.parts))
+
+    # Drop a SKILL.md nested under another SKILL.md's own directory (e.g. a
+    # bundled `references/SKILL.md`) — it's reference material, not a second
+    # top-level skill, and counting it inflates skills_scanned/conflicts.
+    top_level: list[Path] = []
+    for candidate in found:
+        if not any(candidate.is_relative_to(kept.parent) for kept in top_level):
+            top_level.append(candidate)
+    return sorted(top_level)
 
 
 def parse_skill(path: Path) -> Skill:

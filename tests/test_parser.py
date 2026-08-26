@@ -106,3 +106,13 @@ def test_discover_skills_non_skill_file(tmp_path: Path) -> None:
 
 def test_discover_skills_nonexistent_path(tmp_path: Path) -> None:
     assert discover_skills(tmp_path / "does-not-exist") == []
+
+
+def test_discover_skills_ignores_skill_md_nested_under_another_skill(tmp_path: Path) -> None:
+    (tmp_path / "my-skill" / "references").mkdir(parents=True)
+    (tmp_path / "my-skill" / "SKILL.md").write_text(GOOD_SKILL)
+    (tmp_path / "my-skill" / "references" / "SKILL.md").write_text(GOOD_SKILL)
+
+    found = discover_skills(tmp_path)
+
+    assert found == [tmp_path / "my-skill" / "SKILL.md"]
