@@ -22,11 +22,19 @@ from skillseal.rules.base import (
 )
 
 _RM_RF_RE = re.compile(r"\brm\s+(-\w*[rR]\w*[fF]\w*|-\w*[fF]\w*[rR]\w*)\b")
-_PIPE_SHELL_RE = re.compile(r"\b(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b", re.IGNORECASE)
+_PIPE_SHELL_RE = re.compile(
+    r"\b(curl|wget|iwr|invoke-webrequest)\b[^\n|]*\|\s*(sudo\s+)?"
+    r"(sh|bash|zsh|python3?|node|perl|iex|invoke-expression)\b",
+    re.IGNORECASE,
+)
 _EVAL_EXEC_RE = re.compile(r"\b(eval|exec)\s*\(")
 _SUDO_RE = re.compile(r"\bsudo\b")
 _CHMOD_777_RE = re.compile(r"\bchmod\s+(-R\s+)?0?777\b")
 _SSH_KEY_RE = re.compile(r"~/\.ssh\b")
+_CREDENTIAL_PATH_RE = re.compile(
+    r"~/\.(aws/credentials|config/gh/hosts\.yml|docker/config\.json|kube/config|npmrc|netrc)\b",
+    re.IGNORECASE,
+)
 _ENV_ACCESS_RE = re.compile(
     r"\b(cat|read|load|source|export|open|parse)\b[^\n]{0,30}\.env\b", re.IGNORECASE
 )
@@ -210,6 +218,15 @@ def _ssh_key_access(skill: Skill, config: Config) -> list[Draft]:
     )
 
 
+def _credential_path_access(skill: Skill, config: Config) -> list[Draft]:
+    return _aggregate(
+        _matches_in_body(skill, _CREDENTIAL_PATH_RE),
+        "Potential risk: skill references a credential file "
+        "(AWS, GitHub CLI, Docker, kube, npm, or netrc).",
+        skill,
+    )
+
+
 def _env_access(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
         _matches_in_body(skill, _ENV_ACCESS_RE),
@@ -292,6 +309,13 @@ RULES: list[Rule] = [
         severity=Severity.WARNING,
         description="Flags references to the user's SSH key directory.",
         fn=_ssh_key_access,
+    ),
+    FuncRule(
+        id="credential-path-access",
+        category=Category.SECURITY,
+        severity=Severity.WARNING,
+        description="Flags references to common credential files beyond SSH keys.",
+        fn=_credential_path_access,
     ),
     FuncRule(
         id="env-file-access",
