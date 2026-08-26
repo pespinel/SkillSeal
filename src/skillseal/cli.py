@@ -23,6 +23,7 @@ from skillseal.conflicts import find_conflicts
 from skillseal.diff import DiffTargetError, diff_skills
 from skillseal.linter import lint_path
 from skillseal.models import Severity
+from skillseal.reporters.github import render_check_reports_github
 from skillseal.reporters.json_reporter import (
     check_reports_to_json,
     conflict_report_to_json,
@@ -78,6 +79,12 @@ class OutputFormat(StrEnum):
     JSON = "json"
 
 
+class CheckFormat(StrEnum):
+    TERMINAL = "terminal"
+    JSON = "json"
+    GITHUB = "github"
+
+
 class FailOn(StrEnum):
     WARNING = "warning"
     ERROR = "error"
@@ -107,7 +114,10 @@ def _load_config_or_exit(path: Path) -> Config:
 @app.command()
 def check(
     path: PathArg,
-    format: Annotated[OutputFormat, typer.Option(help="Output format.")] = OutputFormat.TERMINAL,
+    format: Annotated[
+        CheckFormat,
+        typer.Option(help="Output format. 'github' emits workflow-command annotations."),
+    ] = CheckFormat.TERMINAL,
     fail_on: Annotated[
         FailOn, typer.Option(help="Minimum severity that fails the gate.")
     ] = FailOn.ERROR,
@@ -134,8 +144,10 @@ def check(
         err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {path}")
         raise typer.Exit(code=2)
 
-    if format is OutputFormat.JSON:
+    if format is CheckFormat.JSON:
         print(json.dumps(check_reports_to_json(reports), indent=2))
+    elif format is CheckFormat.GITHUB:
+        render_check_reports_github(reports)
     else:
         render_check_reports(reports, console)
 

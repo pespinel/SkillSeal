@@ -7,7 +7,7 @@ discovered skill and prints a per-skill report with a 0-100 score.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--format terminal\|json` | `terminal` | Output format. |
+| `--format terminal\|json\|github` | `terminal` | Output format. `github` emits `::warning`/`::error` [workflow-command annotations](https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-error-message), one per finding. |
 | `--fail-on warning\|error` | `error` | Minimum finding severity that fails the gate. |
 | `--min-score <int>` | none | Fail the gate if any skill's score is below this. |
 | `--ignore PREFIX` | none | Suppress findings whose id starts with `PREFIX`. Repeatable. |

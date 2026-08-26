@@ -267,3 +267,17 @@ def test_explain_configurable_rule_shows_threshold() -> None:
 def test_explain_unknown_rule_exits_two() -> None:
     result = runner.invoke(app, ["explain", "not-a-real-rule"])
     assert result.exit_code == 2
+
+
+def test_check_github_format_emits_workflow_commands() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--format", "github"])
+    assert result.exit_code == 1
+    assert "::error file=" in result.stdout
+    assert "title=rm-rf" in result.stdout
+    assert "line=" in result.stdout
+
+
+def test_check_github_format_has_no_rich_markup() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--format", "github"])
+    assert "[bold]" not in result.stdout
+    assert "\x1b[" not in result.stdout
