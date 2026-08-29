@@ -1,6 +1,6 @@
 [project]
 name = "skillseal"
-version = "0.26.2"
+version = "0.27.0"
 description = "Lint, score, and routing-test Agent Skills (SKILL.md) before your agents do."
 readme = "README.md"
 requires-python = ">=3.12"
