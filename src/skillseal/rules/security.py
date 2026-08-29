@@ -388,6 +388,13 @@ def _path_traversal(skill: Skill, config: Config) -> list[Draft]:
     skill_root = skill.dir.resolve()
     escapes = []
     for target, offset in local_file_targets(skill.body):
+        # A reference to a *sibling skill's own manifest* (../other-skill/
+        # SKILL.md) is a common, benign cross-referencing convention in a
+        # skills collection — not the traversal-to-sensitive-files pattern
+        # this rule exists to catch (~/.ssh, .env, /etc/...). Narrow: only
+        # the target's filename, not any other escape, is exempted.
+        if Path(target).name == "SKILL.md":
+            continue
         resolved = (skill.dir / target).resolve()
         try:
             resolved.relative_to(skill_root)

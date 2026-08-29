@@ -135,6 +135,21 @@ def test_relative_reference_within_directory_not_flagged(make_skill) -> None:
     assert "path-traversal" not in _run(skill)
 
 
+def test_sibling_skill_manifest_reference_not_flagged(make_skill) -> None:
+    # ../other-skill/SKILL.md is a common, benign cross-reference in a
+    # bundled skills collection (found via a real remotion-dev/skills repo)
+    # — narrow exception, only for a target literally named SKILL.md
+    skill = make_skill(body="See [best practices](../remotion-best-practices/SKILL.md).\n")
+    assert "path-traversal" not in _run(skill)
+
+
+def test_non_skill_file_traversal_still_flagged(make_skill) -> None:
+    # the exception is narrow: escaping to a sensitive-looking file that
+    # isn't named SKILL.md must still flag, ssh keys or env files above all
+    skill = make_skill(body="Read the key at [secret](../../.ssh/id_rsa) for context.\n")
+    assert "path-traversal" in _run(skill)
+
+
 def test_repeated_occurrences_aggregate_into_one_finding(make_skill) -> None:
     skill = make_skill(body="```bash\nrm -rf /a\nrm -rf /b\nrm -rf /c\n```\n")
     findings = [f for rule in security.RULES for f in rule.check(skill) if f.id == "rm-rf"]
