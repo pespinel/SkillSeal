@@ -134,6 +134,22 @@ def test_bare_file_reference_passes(make_skill) -> None:
     assert "deep-file-reference" not in _run(skill)
 
 
+def test_link_in_fenced_code_block_not_flagged(make_skill) -> None:
+    # a markdown-link-shaped example inside a code fence is illustrative
+    # output, not a real reference to check for existence (found via a
+    # real-world skill: an example showing what generated output looks like)
+    body = "```markdown\n- spec: [cost-tile](specs/global-design/cost-tile.spec.md)\n```\n"
+    skill = make_skill(body=body)
+    assert "dangling-file-reference" not in _run(skill)
+
+
+def test_link_in_inline_code_not_flagged(make_skill) -> None:
+    # a `[<slug>](<path>)` pattern description, not a real link
+    skill = make_skill(body="Append one `- spec: [<slug>](<path>)` bullet per component.\n")
+    assert "dangling-file-reference" not in _run(skill)
+    assert "deep-file-reference" not in _run(skill)
+
+
 def test_metadata_token_budget_exceeded(make_skill) -> None:
     skill = make_skill(description="word " * 200)
     assert "metadata-token-budget" in _run(skill)

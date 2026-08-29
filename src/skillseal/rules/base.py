@@ -154,11 +154,19 @@ def markdown_link_targets(body: str) -> list[tuple[str, int]]:
 
 
 def local_file_targets(body: str) -> list[tuple[str, int]]:
-    """Markdown link targets (with offset) that point at a local file, not a URL/anchor."""
+    """Markdown link targets (with offset) that point at a local file, not a URL/anchor.
+
+    Excludes links inside a code span (fenced/indented/inline) — a
+    `[<slug>](<path>)` pattern description or an illustrative example inside
+    a ```markdown code block isn't a real reference to check for existence.
+    """
+    code_ranges = [(offset, offset + len(content)) for content, offset in extract_code_spans(body)]
     return [
         (target, offset)
         for target, offset in markdown_link_targets(body)
-        if not _URL_SCHEME_RE.match(target) and not target.startswith("#")
+        if not _URL_SCHEME_RE.match(target)
+        and not target.startswith("#")
+        and not any(start <= offset < end for start, end in code_ranges)
     ]
 
 
