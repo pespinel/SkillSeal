@@ -153,12 +153,25 @@ def markdown_link_targets(body: str) -> list[tuple[str, int]]:
     return [(m.group(1), m.start(1)) for m in _MD_LINK_RE.finditer(body)]
 
 
+def _looks_like_a_path(target: str) -> bool:
+    """A real file reference has a slash or an extension; a bare word like
+
+    "url" (a common prose placeholder — "[cite it here](url)") or a
+    `<placeholder>` in angle brackets doesn't. Not exhaustive, but the
+    common shape of the false positives it exists to catch.
+    """
+    if "<" in target or ">" in target:
+        return False
+    return "/" in target or "." in target
+
+
 def local_file_targets(body: str) -> list[tuple[str, int]]:
     """Markdown link targets (with offset) that point at a local file, not a URL/anchor.
 
     Excludes links inside a code span (fenced/indented/inline) — a
     `[<slug>](<path>)` pattern description or an illustrative example inside
-    a ```markdown code block isn't a real reference to check for existence.
+    a ```markdown code block isn't a real reference to check for existence —
+    and targets that don't look path-shaped in the first place.
     """
     code_ranges = [(offset, offset + len(content)) for content, offset in extract_code_spans(body)]
     return [
@@ -167,6 +180,7 @@ def local_file_targets(body: str) -> list[tuple[str, int]]:
         if not _URL_SCHEME_RE.match(target)
         and not target.startswith("#")
         and not any(start <= offset < end for start, end in code_ranges)
+        and _looks_like_a_path(target)
     ]
 
 

@@ -188,11 +188,17 @@ def _dangling_file_references(skill: Skill, config: Config) -> list[Draft]:
 
 
 def _deep_file_references(skill: Skill, config: Config) -> list[Draft]:
-    """Spec: 'Keep file references one level deep from SKILL.md.'"""
+    """Spec: 'Keep file references one level deep from SKILL.md.'
+
+    A `../sibling-skill/SKILL.md` reference (common in a repo bundling
+    several related skills) isn't nested *within* this skill's own reference
+    tree — it escapes it entirely, a different thing from `references/sub/
+    foo.md`. `..` counts as escaping, not as a directory level.
+    """
     deep = [
         (target, offset)
         for target, offset in local_file_targets(skill.body)
-        if len(Path(target).parent.parts) > 1
+        if ".." not in Path(target).parts and len(Path(target).parent.parts) > 1
     ]
     if not deep:
         return []

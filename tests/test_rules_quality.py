@@ -134,6 +134,15 @@ def test_bare_file_reference_passes(make_skill) -> None:
     assert "deep-file-reference" not in _run(skill)
 
 
+def test_sibling_skill_reference_not_flagged_as_deep(make_skill) -> None:
+    # ../other-skill/SKILL.md escapes this skill's own reference tree
+    # entirely (a cross-skill reference, common in a bundled collection) —
+    # ".." isn't a directory level nested *within* it (found via a real
+    # remotion-dev/skills repo: remotion-create references its siblings)
+    skill = make_skill(body="See [best practices](../remotion-best-practices/SKILL.md).\n")
+    assert "deep-file-reference" not in _run(skill)
+
+
 def test_link_in_fenced_code_block_not_flagged(make_skill) -> None:
     # a markdown-link-shaped example inside a code fence is illustrative
     # output, not a real reference to check for existence (found via a
@@ -148,6 +157,14 @@ def test_link_in_inline_code_not_flagged(make_skill) -> None:
     skill = make_skill(body="Append one `- spec: [<slug>](<path>)` bullet per component.\n")
     assert "dangling-file-reference" not in _run(skill)
     assert "deep-file-reference" not in _run(skill)
+
+
+def test_placeholder_word_target_not_flagged(make_skill) -> None:
+    # "[Smith et al., 2025](url)" — a citation-format example where "url" is
+    # a prose placeholder, not a real path (no slash, no extension); found
+    # via a real skill on skills.sh
+    skill = make_skill(body="e.g., [Smith et al., 2025](url) for citations.\n")
+    assert "dangling-file-reference" not in _run(skill)
 
 
 def test_metadata_token_budget_exceeded(make_skill) -> None:
