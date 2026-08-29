@@ -13,6 +13,7 @@ from pathlib import Path
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import (
+    HIDDEN_UNICODE_RE,
     Draft,
     FuncRule,
     Rule,
@@ -54,11 +55,11 @@ _INTERP_SHELL_RE = re.compile(
 # human reads — these target hidden or override-style instructions embedded
 # in the prose itself, distinct from the dangerous-*command* rules above.
 
-# Zero-width/joiner marks (U+200B-200F), bidi embedding/override controls
-# (U+202A-202E), and a mid-text BOM (U+FEFF) — a leading file BOM is already
-# stripped in parser.py, so any of these found here is embedded, not the
-# file's own encoding artifact.
-_HIDDEN_UNICODE_RE = re.compile(r"[\u200b-\u200f\u202a-\u202e\ufeff]")
+# HIDDEN_UNICODE_RE (imported from rules.base): zero-width/joiner marks
+# (U+200B-200F), bidi embedding/override controls (U+202A-202E), and a
+# mid-text BOM (U+FEFF) — a leading file BOM is already stripped in
+# parser.py, so any of these found here is embedded, not the file's own
+# encoding artifact.
 _INSTRUCTION_OVERRIDE_RE = re.compile(
     r"ignore\s+(all\s+|the\s+)?previous\s+instructions"
     r"|disregard\s+(all\s+|the\s+)?(above|previous)"
@@ -289,7 +290,7 @@ def _interpolated_shell_input(skill: Skill, config: Config) -> list[Draft]:
 
 def _hidden_unicode(skill: Skill, config: Config) -> list[Draft]:
     return _aggregate(
-        _matches_in_body(skill, _HIDDEN_UNICODE_RE),
+        _matches_in_body(skill, HIDDEN_UNICODE_RE),
         "Potential risk: invisible or directional-override Unicode character found — "
         "a classic hidden-instruction vector.",
         skill,

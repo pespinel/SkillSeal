@@ -3,7 +3,7 @@
 Exit codes (all commands):
   0 = clean / gate passed
   1 = gate failed (--fail-on / --min-score / --threshold / --require-tests not met,
-      a conflict was found, or diff regressed)
+      a conflict was found, diff regressed, or `fix` (dry-run) found something to fix)
   2 = usage or config error (bad path, no SKILL.md found, malformed skillseal.yaml/toml)
 """
 
@@ -21,6 +21,7 @@ from skillseal import __version__
 from skillseal.config import Config, ConfigError, load_config
 from skillseal.conflicts import find_conflicts
 from skillseal.diff import DiffTargetError, diff_skills
+from skillseal.fix import apply_fixes, plan_fixes
 from skillseal.linter import lint_path, lint_skill
 from skillseal.models import Severity
 from skillseal.parser import parse_skill
@@ -312,6 +313,59 @@ def diff_command(
 
     gate_failed = diff.regressed or (fail_on_new_findings and bool(diff.added))
     raise typer.Exit(code=1 if gate_failed else 0)
+
+
+@app.command()
+def fix(
+    path: PathArg,
+    write: Annotated[
+        bool, typer.Option("--write", help="Apply fixes. Without this, dry-run only.")
+    ] = False,
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Apply even to files with uncommitted git changes."),
+    ] = False,
+) -> None:
+    """Fix trailing whitespace, a leading BOM, and hidden Unicode — nothing else.
+
+    Deterministic and narrowly scoped by design: see the module docstring in
+    fix.py for what's deliberately out of scope (frontmatter reordering,
+    name-directory-mismatch, anything touching a description).
+    """
+    if not path.exists():
+        err_console.print(f"[red]Error:[/red] path not found: {path}")
+        raise typer.Exit(code=2)
+
+    if write:
+        result = apply_fixes(path, force=force)
+        if not result.fixed and not result.skipped_dirty:
+            console.print("Nothing to fix.")
+            raise typer.Exit(code=0)
+        for p in result.fixed:
+            console.print(f"[green]fixed[/green] {p}")
+        for p in result.skipped_dirty:
+            console.print(f"[yellow]skipped[/yellow] {p} (uncommitted changes, use --force)")
+        raise typer.Exit(code=0)
+
+    plan = plan_fixes(path)
+    if not plan:
+        err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {path}")
+        raise typer.Exit(code=2)
+    changed = [f for f in plan if f.changed]
+    if not changed:
+        console.print("Nothing to fix.")
+        raise typer.Exit(code=0)
+    for f in changed:
+        parts = []
+        if f.trailing_whitespace_lines:
+            parts.append(f"trailing-whitespace: {f.trailing_whitespace_lines} line(s)")
+        if f.had_bom:
+            parts.append("bom: present")
+        if f.hidden_unicode_chars:
+            parts.append(f"hidden-unicode: {f.hidden_unicode_chars} char(s)")
+        console.print(f"{f.path}\n  " + "\n  ".join(parts))
+    console.print(f"\n{len(changed)} file(s) would be fixed. Run with --write to apply.")
+    raise typer.Exit(code=1)
 
 
 @app.command()

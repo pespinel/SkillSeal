@@ -255,6 +255,45 @@ def test_diff_target_with_multiple_skills_exits_two() -> None:
     assert result.exit_code == 2
 
 
+def test_fix_dry_run_exits_one_when_something_to_fix(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "helper"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: helper\ndescription: Use this skill when doing things.\n---\nBody.   \n"
+    )
+    result = runner.invoke(app, ["fix", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "trailing-whitespace" in result.stdout
+
+
+def test_fix_dry_run_exits_zero_when_clean(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "helper"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: helper\ndescription: Use this skill when doing things.\n---\nBody.\n"
+    )
+    result = runner.invoke(app, ["fix", str(tmp_path)])
+    assert result.exit_code == 0
+
+
+def test_fix_write_applies_and_exits_zero(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "helper"
+    skill_dir.mkdir()
+    skill_md = skill_dir / "SKILL.md"
+    skill_md.write_text(
+        "---\nname: helper\ndescription: Use this skill when doing things.\n---\nBody.   \n"
+    )
+    result = runner.invoke(app, ["fix", str(tmp_path), "--write"])
+    assert result.exit_code == 0
+    assert "fixed" in result.stdout
+    assert not skill_md.read_text().endswith("Body.   \n")
+
+
+def test_fix_nonexistent_path_exits_two() -> None:
+    result = runner.invoke(app, ["fix", str(EXAMPLES / "does-not-exist")])
+    assert result.exit_code == 2
+
+
 def test_version_flag() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0

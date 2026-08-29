@@ -95,6 +95,11 @@ RULE_THRESHOLD_FIELD: dict[str, str] = {
 
 # --- shared text helpers -------------------------------------------------
 
+# Zero-width/joiner marks, bidi embedding/override controls, and a mid-text
+# BOM — public (not `_`-prefixed) so `skillseal.fix` can strip what
+# `hidden-unicode-chars` (security.py) flags, without importing a private name.
+HIDDEN_UNICODE_RE = re.compile(r"[​-‏‪-‮﻿]")
+
 # Matches ``` or ~~~ fences (CommonMark treats them as equivalent); the
 # backreference requires the closing fence to be the exact same marker, so a
 # stray odd-length fence can't mis-pair and swallow prose as "code".

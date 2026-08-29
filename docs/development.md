@@ -12,6 +12,7 @@ src/skillseal/
 ├── conflicts.py              # cross-skill: duplicate names, routing-overlap (Jaccard)
 ├── diff.py                     # score/finding delta between two versions of a skill
 ├── scaffold.py                   # `init`: scaffolds a new skill + skillseal.yaml
+├── fix.py                          # `fix`: safe deterministic normalizations (whitespace, BOM, hidden Unicode)
 ├── rules/
 │   ├── base.py             # Rule protocol, FuncRule, registry, text helpers
 │   ├── metadata.py          # SPECIFICATION rules
@@ -25,7 +26,7 @@ src/skillseal/
 │   ├── terminal.py             # Rich terminal output
 │   ├── json_reporter.py         # stable JSON schema
 │   └── github.py                 # workflow-command annotations (`--format github`)
-└── cli.py                          # typer app: check, test, conflicts, diff, init, rules, explain
+└── cli.py                          # typer app: check, test, conflicts, diff, fix, init, rules, explain
 ```
 
 A `Rule` is `id`, `category`, `severity`, `description`, and

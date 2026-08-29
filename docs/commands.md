@@ -147,6 +147,29 @@ the skill worse?" CI check.
 | `--format terminal\|json` | `terminal` | Output format. |
 | `--fail-on-new-findings` | off | Fail if *any* new finding appeared, even when the net score didn't regress. A fixed vague description can offset a newly-introduced `absolute-path` WARNING score-wise; this catches that case, which the plain score-delta gate can't see. |
 
+## `skillseal fix <path>`
+
+Applies a deliberately narrow set of safe, deterministic fixes: trailing
+whitespace, a leading UTF-8 BOM, and hidden/bidi-override Unicode characters
+(the same ones `hidden-unicode-chars` flags). Nothing else — no frontmatter
+reordering, no `name-directory-mismatch` rewriting, and never anything that
+touches a description. Those need either a round-trip-preserving YAML writer
+or a human decision this command isn't in a position to make; see the
+`fix.py` module docstring for the full reasoning.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--write` | off | Apply the fixes. Without it, `fix` only reports what it *would* change. |
+| `--force` | off | Apply even to a file with uncommitted git changes. Without `--force`, a dirty file is skipped and reported, never silently mutated. |
+
+Dry-run (no `--write`) exits `1` if anything is fixable, `0` if the tree is
+already clean — usable as a CI gate the same way `ruff format --check` is:
+
+```bash
+skillseal fix ./skills            # report only
+skillseal fix ./skills --write    # apply
+```
+
 ## `skillseal rules`
 
 Lists every lint rule: id, category, severity, one-line description, and
@@ -177,7 +200,7 @@ Suppress: skillseal check --ignore rm-rf
 | Code | Meaning |
 |---|---|
 | `0` | Clean, or the gate passed. |
-| `1` | Gate failed (`--fail-on` / `--min-score` / `--threshold` / `--require-tests` not met, a conflict was found, or `diff` regressed). |
+| `1` | Gate failed (`--fail-on` / `--min-score` / `--threshold` / `--require-tests` not met, a conflict was found, `diff` regressed, or `fix` found something to fix in dry-run). |
 | `2` | Usage or config error — bad path, no `SKILL.md` found, malformed `skillseal.yaml`/`.toml`. |
 
 A typo'd path can never silently report success: exit `2` is reserved for
