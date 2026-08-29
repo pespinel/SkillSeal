@@ -50,6 +50,13 @@ locally with `uv run --group docs mkdocs serve`.
 (`feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`), English, one line,
 imperative, focused on *why*. No trailing summary paragraphs.
 
+## Versioning
+
+Standard semver, driven by the commit type: `fix` → patch, `feat` → minor,
+a breaking change → major (bump the major version and call it out in the
+commit body, e.g. `BREAKING CHANGE: ...`). When a release bundles several
+commits, bump by the highest-impact one in the batch.
+
 ## Architecture (see also [Development](https://pespinel.github.io/SkillSeal/development/) on the docs site)
 
 ```
