@@ -50,3 +50,14 @@ def test_empty_description_never_triggers(make_skill) -> None:
     evaluator = HeuristicRoutingEvaluator()
     result = evaluator.evaluate(skill, "Anything at all")
     assert result.triggered is False
+
+
+def test_threshold_is_constructor_configurable(make_skill) -> None:
+    # a prompt with exactly one overlapping term out of several: low recall,
+    # below the default 0.3 cutoff but above a looser one
+    skill = make_skill(description="Use this skill when reviewing payment code.")
+    prompt = "Please look at this payment thing among many unrelated other words here"
+    default_result = HeuristicRoutingEvaluator().evaluate(skill, prompt)
+    loose_result = HeuristicRoutingEvaluator(threshold=0.05).evaluate(skill, prompt)
+    assert default_result.triggered is False
+    assert loose_result.triggered is True

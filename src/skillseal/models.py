@@ -103,7 +103,9 @@ class RoutingResult(BaseModel):
     """Output of one RoutingEvaluator.evaluate() call, before scoring against expectation."""
 
     triggered: bool
-    confidence: float
+    # None for evaluators with no calibrated confidence signal (e.g. an LLM
+    # judge just returns yes/no) rather than a fabricated number.
+    confidence: float | None
     reason: str
 
 
@@ -111,7 +113,7 @@ class RoutingCaseResult(BaseModel):
     prompt: str
     expected: bool
     actual: bool
-    confidence: float
+    confidence: float | None
     reason: str
 
     @property

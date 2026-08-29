@@ -29,6 +29,10 @@ class Config:
     conflict_threshold: float = 0.5
     containment_threshold: float = 0.8
     routing_threshold: float = 0.9
+    # Per-prompt recall cutoff HeuristicRoutingEvaluator uses to decide
+    # triggered/not-triggered — distinct from routing_threshold above, which
+    # gates the *suite's* pass rate (accuracy across all cases).
+    routing_trigger_threshold: float = 0.3
 
 
 DEFAULT_CONFIG = Config()

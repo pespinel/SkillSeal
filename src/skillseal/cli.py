@@ -196,7 +196,7 @@ def test_routing(
             err_console.print(f"[red]Error:[/red] {exc}")
             raise typer.Exit(code=2) from exc
     else:
-        evaluator = HeuristicRoutingEvaluator()
+        evaluator = HeuristicRoutingEvaluator(threshold=config.routing_trigger_threshold)
 
     try:
         summaries = run_routing_tests_for_path(path, evaluator, resolved_threshold)
@@ -277,6 +277,13 @@ def diff_command(
     old: Annotated[Path, typer.Argument(help="Old version: a SKILL.md file or skill directory.")],
     new: Annotated[Path, typer.Argument(help="New version: a SKILL.md file or skill directory.")],
     format: Annotated[OutputFormat, typer.Option(help="Output format.")] = OutputFormat.TERMINAL,
+    fail_on_new_findings: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-new-findings",
+            help="Fail if any new finding appeared, even when the net score didn't regress.",
+        ),
+    ] = False,
 ) -> None:
     """Compare two versions of a skill: score and finding deltas."""
     for label, path in (("old", old), ("new", new)):
@@ -296,7 +303,8 @@ def diff_command(
     else:
         render_skill_diff(diff, console)
 
-    raise typer.Exit(code=1 if diff.regressed else 0)
+    gate_failed = diff.regressed or (fail_on_new_findings and bool(diff.added))
+    raise typer.Exit(code=1 if gate_failed else 0)
 
 
 @app.command()

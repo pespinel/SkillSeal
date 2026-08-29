@@ -227,11 +227,13 @@ class LLMRoutingEvaluator:
         reason_match = _REASON_RE.search(completion)
         if trigger_match is None:
             return RoutingResult(
-                triggered=False, confidence=0.0, reason="Could not parse model response."
+                triggered=False, confidence=None, reason="Could not parse model response."
             )
         triggered = trigger_match.group(1).lower() == "yes"
         reason = reason_match.group(1).strip() if reason_match else completion.strip()[:200]
-        return RoutingResult(triggered=triggered, confidence=1.0, reason=reason)
+        # The model gives a yes/no, not a calibrated certainty — 1.0 would be a
+        # fabricated number, not a real confidence score.
+        return RoutingResult(triggered=triggered, confidence=None, reason=reason)
 
 
 class OpenAICompatibleProvider:

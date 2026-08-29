@@ -106,6 +106,23 @@ def test_check_min_score_passes_when_met() -> None:
     assert result.exit_code == 0
 
 
+def test_routing_trigger_threshold_configurable_via_toml(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "helper"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: helper\ndescription: Use this skill when reviewing payment code.\n---\n"
+    )
+    prompt = "Please look at this payment thing among many unrelated other words here"
+    (skill_dir / "skillseal.yaml").write_text(f'routing:\n  should_trigger:\n    - "{prompt}"\n')
+
+    default_result = runner.invoke(app, ["test", str(skill_dir)])
+    assert default_result.exit_code == 1
+
+    (tmp_path / "skillseal.toml").write_text("[thresholds]\nrouting_trigger_threshold = 0.05\n")
+    loosened_result = runner.invoke(app, ["test", str(skill_dir)])
+    assert loosened_result.exit_code == 0
+
+
 def test_routing_llm_provider_without_config_exits_two(monkeypatch) -> None:
     monkeypatch.delenv("SKILLSEAL_BASE_URL", raising=False)
     monkeypatch.delenv("SKILLSEAL_MODEL", raising=False)
@@ -181,6 +198,27 @@ def test_malformed_config_exits_two(tmp_path: Path) -> None:
     )
     result = runner.invoke(app, ["check", str(skill_dir)])
     assert result.exit_code == 2
+
+
+def test_diff_fail_on_new_findings_catches_a_masked_regression(tmp_path: Path) -> None:
+    # net score improves (a vague description gets fixed) but a new,
+    # unrelated finding (absolute-path) is introduced — plain --fail-on-new-
+    # findings-less `regressed` can't see this, --fail-on-new-findings can
+    old = tmp_path / "old" / "helper"
+    old.mkdir(parents=True)
+    (old / "SKILL.md").write_text("---\nname: helper\ndescription: Helps with tasks.\n---\n")
+    new = tmp_path / "new" / "helper"
+    new.mkdir(parents=True)
+    (new / "SKILL.md").write_text(
+        "---\nname: helper\ndescription: Use this skill when the user needs help "
+        "completing a specific task.\n---\nWrite output to /Users/you/results.\n"
+    )
+
+    plain = runner.invoke(app, ["diff", str(old), str(new)])
+    assert plain.exit_code == 0
+
+    gated = runner.invoke(app, ["diff", str(old), str(new), "--fail-on-new-findings"])
+    assert gated.exit_code == 1
 
 
 def test_diff_improvement_exits_zero() -> None:
