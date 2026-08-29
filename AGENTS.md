@@ -61,10 +61,12 @@ src/skillseal/
 ├── config.py               skillseal.toml: threshold overrides (Rule.fn takes Config now)
 ├── conflicts.py              cross-skill: duplicate names, routing-overlap (Jaccard)
 ├── diff.py                     score/finding delta between two versions of a skill
+├── scaffold.py                   `init`: scaffolds a new skill + skillseal.yaml
 ├── rules/                    one module per category: metadata/quality/security/portability
 ├── routing/                    HeuristicRoutingEvaluator + optional LLMRoutingEvaluator
-├── reporters/                     terminal.py (Rich) and json_reporter.py (stable schema)
-└── cli.py                           typer app: check, test, conflicts, diff
+├── reporters/                     terminal.py (Rich), json_reporter.py (stable schema),
+│                                    github.py (workflow-command annotations)
+└── cli.py                           typer app: check, test, conflicts, diff, init, rules, explain
 ```
 
 ## Adding a new lint rule

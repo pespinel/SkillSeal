@@ -62,6 +62,7 @@ root (so one file at your repo root applies everywhere):
 ```toml
 [thresholds]
 min_description_length = 20     # default: 10
+vague_description_min_words = 15  # default: 10 — see `description-too-vague`, below
 metadata_token_threshold = 150  # default: 100 — name + description startup budget
 token_warn_threshold = 3000     # default: 5000
 max_lines = 300                 # default: 500
@@ -70,7 +71,24 @@ max_top_level_sections = 10     # default: 8
 conflict_threshold = 0.6        # default: 0.5 — see `conflicts` in Commands
 containment_threshold = 0.9     # default: 0.8 — see `conflicts` in Commands
 routing_threshold = 0.85        # default: 0.9 — see `test` in Commands
+routing_trigger_threshold = 0.4 # default: 0.3 — see below, NOT the same as routing_threshold
 ```
+
+Two of these are easy to mix up:
+
+- **`routing_threshold`** gates the *test suite's pass rate* — what fraction
+  of a skill's `should_trigger`/`should_not_trigger` cases must pass for
+  `skillseal test` to exit 0.
+- **`routing_trigger_threshold`** is the `HeuristicRoutingEvaluator`'s
+  internal per-prompt cutoff — how much of a *single prompt's* vocabulary
+  must overlap the skill's own vocabulary for that one case to count as
+  triggered. See [Development](development.md) for how it's computed.
+
+`description-too-vague` (QUALITY) flags a description under
+`vague_description_min_words` words — a corpus measurement found only 1% of
+descriptions at 10 words or fewer state when the skill applies, vs. 72% past
+20 words. It also still checks a small phrase blocklist ("use this skill when
+needed" and similar) as a cheap backstop, independent of length.
 
 - Any threshold you omit keeps its default. An explicit `--threshold` on
   `test`/`conflicts` still overrides whatever `skillseal.toml` sets.

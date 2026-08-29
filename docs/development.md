@@ -11,6 +11,7 @@ src/skillseal/
 ├── config.py               # skillseal.toml: threshold overrides
 ├── conflicts.py              # cross-skill: duplicate names, routing-overlap (Jaccard)
 ├── diff.py                     # score/finding delta between two versions of a skill
+├── scaffold.py                   # `init`: scaffolds a new skill + skillseal.yaml
 ├── rules/
 │   ├── base.py             # Rule protocol, FuncRule, registry, text helpers
 │   ├── metadata.py          # SPECIFICATION rules
@@ -22,8 +23,9 @@ src/skillseal/
 │   └── runner.py               # loads skillseal.yaml, runs cases
 ├── reporters/
 │   ├── terminal.py             # Rich terminal output
-│   └── json_reporter.py         # stable JSON schema
-└── cli.py                        # typer app: check, test, conflicts, diff
+│   ├── json_reporter.py         # stable JSON schema
+│   └── github.py                 # workflow-command annotations (`--format github`)
+└── cli.py                          # typer app: check, test, conflicts, diff, init, rules, explain
 ```
 
 A `Rule` is `id`, `category`, `severity`, `description`, and
@@ -40,6 +42,14 @@ implementations:
   removal and light suffix stripping) is covered by the skill's own name,
   description, and `keywords:`. It's deliberately simple — not real NLP —
   which is also why it's fast, free, and explainable ("Matched terms: ...").
+  Recall is measured against the prompt's own term count, floored at 4, so a
+  single shared word can't reach 1.0 recall and trigger on its own — a
+  one-word prompt used to do exactly that. A `keywords:` entry only
+  force-triggers if it's a full multi-word phrase present in the prompt; a
+  single-word keyword still counts toward ordinary recall, it just can't
+  short-circuit alone (both from a real-corpus measurement — see
+  [`skillseal.toml`](configuration.md#skillsealtoml) for the tunable
+  thresholds).
 - **`LLMRoutingEvaluator`**: delegates the trigger/no-trigger decision to an
   `LLMProvider` (`complete(prompt) -> str`). `OpenAICompatibleProvider`
   implements this against any OpenAI-compatible `/chat/completions` endpoint,
@@ -80,8 +90,10 @@ release:
    then builds the sdist and wheel, signs a
    [SLSA build provenance attestation](https://slsa.dev/), publishes to PyPI
    via [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC,
-   no stored token), and creates the GitHub Release with auto-generated
-   notes.
+   no stored token), and creates the GitHub Release with notes built from the
+   commit log since the previous tag — not GitHub's `--generate-notes`, which
+   summarizes merged PRs and produced an empty changelog here, since this
+   repo pushes straight to `main` rather than merging PRs.
 
 Gated on CI, not run in parallel with it: `auto-release.yml` triggers on the
 **CI workflow's completion**, not directly on push, so a version bump can

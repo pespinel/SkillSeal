@@ -145,6 +145,7 @@ the skill worse?" CI check.
 | Flag | Default | Meaning |
 |---|---|---|
 | `--format terminal\|json` | `terminal` | Output format. |
+| `--fail-on-new-findings` | off | Fail if *any* new finding appeared, even when the net score didn't regress. A fixed vague description can offset a newly-introduced `absolute-path` WARNING score-wise; this catches that case, which the plain score-delta gate can't see. |
 
 ## `skillseal rules`
 

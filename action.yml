@@ -19,7 +19,7 @@ inputs:
     required: false
     default: ""
   format:
-    description: "Output format (terminal|json)."
+    description: "Output format (terminal|json|github). 'github' emits inline workflow annotations."
     required: false
     default: "terminal"
   ignore:

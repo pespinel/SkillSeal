@@ -5,7 +5,7 @@ pin to the [latest release tag](https://github.com/pespinel/skillseal/releases/l
 not `@main`:
 
 ```yaml
-- uses: pespinel/skillseal@v0.6.0
+- uses: pespinel/skillseal@v0.19.0
   with:
     path: ./skills
     fail-on: error
@@ -39,7 +39,7 @@ Also pin `rev` to the [latest release tag](https://github.com/pespinel/skillseal
 ```yaml
 repos:
   - repo: https://github.com/pespinel/skillseal
-    rev: v0.6.0
+    rev: v0.19.0
     hooks:
       - id: skillseal
 ```
