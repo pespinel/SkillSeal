@@ -129,6 +129,18 @@ def _vague_description(skill: Skill, config: Config) -> list[Draft]:
                     line=frontmatter_key_line(skill, "description"),
                 )
             ]
+    # The phrase blocklist above is a cheap, essentially-never-fires backstop
+    # (0/1142 real skills on a corpus scan, #28) — length is the signal that
+    # actually discriminates: see config.vague_description_min_words.
+    word_count = len(skill.description.split())
+    if 0 < word_count < config.vague_description_min_words:
+        return [
+            Draft(
+                message="Description may not provide enough information for reliable routing.",
+                detail=f"{word_count} word(s) (recommended: {config.vague_description_min_words}+)",
+                line=frontmatter_key_line(skill, "description"),
+            )
+        ]
     return []
 
 

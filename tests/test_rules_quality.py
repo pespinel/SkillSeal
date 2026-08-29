@@ -73,6 +73,21 @@ def test_vague_description(make_skill) -> None:
     assert _find(skill, "description-too-vague").line == 3  # 'description:' frontmatter line
 
 
+def test_short_description_flagged_by_word_count(make_skill) -> None:
+    # the phrase blocklist alone fired 0/1142 times on a real corpus (#28) —
+    # this description matches none of those phrases but is still too short
+    # to plausibly state when the skill applies
+    skill = make_skill(description="Analyzes and summarizes quarterly reports.")
+    assert "description-too-vague" in _run(skill)
+    assert "word(s)" in (_find(skill, "description-too-vague").detail or "")
+
+
+def test_ten_word_description_not_flagged_as_vague(make_skill) -> None:
+    # exactly at the configured floor: shouldn't trigger
+    skill = make_skill(description="Use this skill when doing the thing that needs doing.")
+    assert "description-too-vague" not in _run(skill)
+
+
 def test_description_missing_when_to_use(make_skill) -> None:
     skill = make_skill(description="Reviews payment code for correctness and security issues.")
     assert "description-missing-when-to-use" in _run(skill)

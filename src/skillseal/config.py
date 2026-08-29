@@ -33,6 +33,11 @@ class Config:
     # triggered/not-triggered — distinct from routing_threshold above, which
     # gates the *suite's* pass rate (accuracy across all cases).
     routing_trigger_threshold: float = 0.3
+    # description-too-vague's phrase blocklist fired 0/1142 times on a real
+    # corpus (#28/#24) - nobody writes "use this skill when needed" verbatim.
+    # This length floor is the signal the same corpus actually supports: only
+    # 1% of <=10-word descriptions state a trigger vs. 72% of >20-word ones.
+    vague_description_min_words: int = 10
 
 
 DEFAULT_CONFIG = Config()
