@@ -344,3 +344,20 @@ def test_check_github_format_has_no_rich_markup() -> None:
     result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--format", "github"])
     assert "[bold]" not in result.stdout
     assert "\x1b[" not in result.stdout
+
+
+def test_check_sarif_format_is_valid_and_complete() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--format", "sarif"])
+    assert result.exit_code == 1
+    payload = json.loads(result.stdout)
+    assert payload["version"] == "2.1.0"
+    run = payload["runs"][0]
+    assert run["tool"]["driver"]["name"] == "SkillSeal"
+    # every rule that actually fired must be in the rules catalog
+    fired_ids = {r["ruleId"] for r in run["results"]}
+    catalog_ids = {r["id"] for r in run["tool"]["driver"]["rules"]}
+    assert fired_ids <= catalog_ids
+    # GitHub code scanning requires a startLine on every result's location,
+    # even for rules with no specific line (see reporters/sarif.py)
+    for r in run["results"]:
+        assert r["locations"][0]["physicalLocation"]["region"]["startLine"] >= 1

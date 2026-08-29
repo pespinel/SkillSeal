@@ -33,7 +33,7 @@ discovered skill and prints a per-skill report with a 0-100 score.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--format terminal\|json\|github` | `terminal` | Output format. `github` emits `::warning`/`::error` [workflow-command annotations](https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-error-message), one per finding. |
+| `--format terminal\|json\|github\|sarif` | `terminal` | Output format. `github` emits `::warning`/`::error` [workflow-command annotations](https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-error-message), one per finding. `sarif` emits a [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.json) report — upload it with [`github/codeql-action/upload-sarif`](https://github.com/github/codeql-action/tree/main/upload-sarif) to get findings as code-scanning alerts on the diff, not just a CI log line. |
 | `--fail-on warning\|error` | `error` | Minimum finding severity that fails the gate. |
 | `--min-score <int>` | none | Fail the gate if any skill's score is below this. |
 | `--ignore PREFIX` | none | Suppress findings whose id starts with `PREFIX`. Repeatable. |

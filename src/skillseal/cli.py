@@ -32,6 +32,7 @@ from skillseal.reporters.json_reporter import (
     rules_to_json,
     skill_diff_to_json,
 )
+from skillseal.reporters.sarif import check_reports_to_sarif
 from skillseal.reporters.terminal import (
     render_check_reports,
     render_conflict_report,
@@ -85,6 +86,7 @@ class CheckFormat(StrEnum):
     TERMINAL = "terminal"
     JSON = "json"
     GITHUB = "github"
+    SARIF = "sarif"
 
 
 class FailOn(StrEnum):
@@ -118,7 +120,10 @@ def check(
     path: PathArg,
     format: Annotated[
         CheckFormat,
-        typer.Option(help="Output format. 'github' emits workflow-command annotations."),
+        typer.Option(
+            help="Output format. 'github' emits workflow-command annotations, "
+            "'sarif' for GitHub code scanning."
+        ),
     ] = CheckFormat.TERMINAL,
     fail_on: Annotated[
         FailOn, typer.Option(help="Minimum severity that fails the gate.")
@@ -150,6 +155,8 @@ def check(
         print(json.dumps(check_reports_to_json(reports), indent=2))
     elif format is CheckFormat.GITHUB:
         render_check_reports_github(reports)
+    elif format is CheckFormat.SARIF:
+        print(json.dumps(check_reports_to_sarif(reports), indent=2))
     else:
         render_check_reports(reports, console)
 
