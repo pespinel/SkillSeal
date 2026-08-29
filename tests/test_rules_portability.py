@@ -36,6 +36,16 @@ def test_plain_scalar_description_not_flagged(make_skill) -> None:
     assert "description-block-scalar" not in _run(skill)
 
 
+def test_folded_scalar_description_not_flagged(make_skill) -> None:
+    # anthropics/claude-code#10589 reproduces and cites '|' (literal style)
+    # specifically — it makes no claim about '>' (folded style), so this
+    # rule doesn't extend the claim to something the source never verified
+    skill = make_skill(
+        frontmatter={"name": "my-skill", "description": ">\n  Use this skill when doing things."}
+    )
+    assert "description-block-scalar" not in _run(skill)
+
+
 def test_allowed_tools_flagged_as_experimental(make_skill) -> None:
     skill = make_skill(
         frontmatter={

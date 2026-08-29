@@ -22,7 +22,12 @@ from skillseal.rules.base import (
     offset_to_line,
 )
 
-_BLOCK_SCALAR_DESCRIPTION_RE = re.compile(r"^description:[ \t]*[|>][+\-]?\d*[ \t]*$", re.MULTILINE)
+# Literal style ('|') only. anthropics/claude-code#10589 reproduces and cites
+# '|' specifically; it says nothing about folded style ('>'), so this rule
+# doesn't claim '>' is broken too — that would be an inference beyond what
+# the cited source actually documents (the whole premise of #6 is that every
+# claim traces to a real, checkable source, not an assumption of our own).
+_BLOCK_SCALAR_DESCRIPTION_RE = re.compile(r"^description:[ \t]*\|[+\-]?\d*[ \t]*$", re.MULTILINE)
 
 _TOOL_KEYWORDS = [
     "npm",
@@ -160,7 +165,7 @@ def _description_block_scalar(skill: Skill, config: Config) -> list[Draft]:
         return []
     return [
         Draft(
-            message="'description' uses YAML block-scalar style ('|' or '>').",
+            message="'description' uses YAML literal block-scalar style ('|').",
             detail=f"{DESCRIPTION_BLOCK_SCALAR.claim} ({DESCRIPTION_BLOCK_SCALAR.source})",
             severity=Severity.WARNING,
             line=frontmatter_key_line(skill, "description"),
