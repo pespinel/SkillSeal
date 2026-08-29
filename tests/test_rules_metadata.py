@@ -153,6 +153,35 @@ def test_compatibility_is_a_known_key(make_skill) -> None:
     assert "unknown-frontmatter-keys" not in _run(skill)
 
 
+def test_claude_code_extension_keys_are_known(make_skill) -> None:
+    # verified against code.claude.com/docs/en/skills — real, documented
+    # Claude Code fields, not portable to the bare spec, but not "unknown"
+    # either. Was flagging nearly every skill in a real-world corpus (#6-adjacent).
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "disable-model-invocation": True,
+            "user-invocable": False,
+            "argument-hint": "[issue-number]",
+        }
+    )
+    assert "unknown-frontmatter-keys" not in _run(skill)
+
+
+def test_genuinely_custom_key_still_flagged(make_skill) -> None:
+    # not every unrecognized key is a vendor extension worth whitelisting —
+    # a real internal framework field (seen in the wild) should still surface
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "context_required": True,
+        }
+    )
+    assert "unknown-frontmatter-keys" in _run(skill)
+
+
 def test_top_level_version_is_not_a_known_key(make_skill) -> None:
     # the spec's own example nests custom fields under metadata:, not top-level
     skill = make_skill(

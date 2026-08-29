@@ -9,21 +9,41 @@ from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import Draft, FuncRule, Rule, frontmatter_key_line
 
 _NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-# Per the agentskills.io spec: name/description/license/compatibility/metadata/allowed-tools
-# are the only recognized top-level keys. "keywords" and "conflict_ignore" are SkillSeal-specific
-# extensions (not spec-standard), used by the heuristic routing evaluator and `conflicts`
-# respectively — kept here so they don't warn.
-_KNOWN_KEYS = {
+# agentskills.io spec: the only keys standard everywhere (claude.ai skill
+# uploads, the Skills API, package_skill.py) — everything else below is a
+# vendor extension or a SkillSeal-specific one, real but not portable.
+_SPEC_KEYS = {
     "name",
     "description",
     "license",
     "compatibility",
     "metadata",
     "allowed-tools",
-    "keywords",
-    "conflict_ignore",
-    "template",
 }
+# SkillSeal's own extensions: used by the heuristic routing evaluator,
+# `conflicts`, and `init`'s template detection, respectively.
+_SKILLSEAL_KEYS = {"keywords", "conflict_ignore", "template"}
+# Claude Code extensions, verified against its frontmatter reference
+# (code.claude.com/docs/en/skills) — not part of the spec, so a skill using
+# these won't upload to claude.ai / the Skills API as-is, but they're a
+# real, documented convention, not an unrecognized/custom key.
+_CLAUDE_CODE_KEYS = {
+    "when_to_use",
+    "argument-hint",
+    "arguments",
+    "disable-model-invocation",
+    "user-invocable",
+    "disallowed-tools",
+    "model",
+    "effort",
+    "context",
+    "agent",
+    "background",
+    "hooks",
+    "paths",
+    "shell",
+}
+_KNOWN_KEYS = _SPEC_KEYS | _SKILLSEAL_KEYS | _CLAUDE_CODE_KEYS
 _MAX_NAME_LEN = 64  # agentskills.io: name must be 1-64 characters
 # min description length is our own heuristic floor (overridable via skillseal.toml);
 # spec only requires non-empty

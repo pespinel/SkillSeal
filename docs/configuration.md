@@ -31,6 +31,15 @@ template: false
 - **`template`** — set to `true` to mark a skill as an intentionally
   unfinished template; see [`init`](commands.md#skillseal-init-name).
 
+Separately, `unknown-frontmatter-keys` also recognizes Claude Code's own
+frontmatter extensions (`disable-model-invocation`, `user-invocable`,
+`argument-hint`, `arguments`, `disallowed-tools`, `model`, `effort`,
+`context`, `agent`, `background`, `hooks`, `paths`, `shell`, `when_to_use`),
+verified against its [frontmatter reference](https://code.claude.com/docs/en/skills#frontmatter-reference).
+These aren't portable to the bare spec — claude.ai skill uploads and the
+Skills API only accept the six agentskills.io fields above — but they're a
+real, documented convention, not an unrecognized key.
+
 ## `skillseal.yaml`
 
 Place a `skillseal.yaml` next to a `SKILL.md` to define its routing tests:
