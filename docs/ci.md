@@ -32,6 +32,21 @@ without it, a repo that has never written a routing test still exits 0
 This repo's own [`.github/workflows/ci.yml`](https://github.com/pespinel/skillseal/blob/main/.github/workflows/ci.yml)
 does the same against `examples/`, plus lint/type-check/unit tests.
 
+## Large skill repos: only lint what changed
+
+For a monorepo with many skills, `--changed` scopes discovery to skills with
+a file that changed between two refs, instead of re-linting the whole tree
+every run:
+
+```yaml
+- name: Check changed Agent Skills
+  run: uvx skillseal check ./skills --changed --base-ref origin/main
+```
+
+`check` also accepts multiple explicit paths directly (`skillseal check
+a/SKILL.md b/SKILL.md`) — that's what the [pre-commit hook](#pre-commit)
+below uses, for per-file scoping without needing a git ref at all.
+
 ## GitHub code scanning
 
 `--format sarif` turns findings into code-scanning alerts on the file/line
@@ -66,4 +81,5 @@ repos:
       - id: skillseal
 ```
 
-Runs `skillseal check .` whenever a `SKILL.md` changes.
+Only lints the `SKILL.md` files that actually changed (`pass_filenames:
+true`) — editing one skill in a large repo doesn't re-lint every other one.

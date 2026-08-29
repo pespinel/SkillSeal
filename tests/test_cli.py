@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -291,6 +292,114 @@ def test_fix_write_applies_and_exits_zero(tmp_path: Path) -> None:
 
 def test_fix_nonexistent_path_exits_two() -> None:
     result = runner.invoke(app, ["fix", str(EXAMPLES / "does-not-exist")])
+    assert result.exit_code == 2
+
+
+def _git(*args: str, cwd: Path) -> None:
+    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+
+def test_check_changed_only_lints_touched_skill(tmp_path: Path) -> None:
+    root = tmp_path / "skills"
+    for name in ("alpha", "beta"):
+        skill_dir = root / name
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text(
+            f"---\nname: {name}\ndescription: Use this skill when doing {name} things.\n---\n"
+            "Body.\n"
+        )
+    _git("init", "-q", cwd=tmp_path)
+    _git("add", "-A", cwd=tmp_path)
+    _git("-c", "user.email=t@t.com", "-c", "user.name=t", "commit", "-q", "-m", "x", cwd=tmp_path)
+    _git("branch", "base", cwd=tmp_path)
+    (root / "beta" / "SKILL.md").write_text((root / "beta" / "SKILL.md").read_text() + "Extra.\n")
+    _git("add", "-A", cwd=tmp_path)
+    _git("-c", "user.email=t@t.com", "-c", "user.name=t", "commit", "-q", "-m", "y", cwd=tmp_path)
+
+    result = runner.invoke(
+        app, ["check", str(root), "--changed", "--base-ref", "base", "--format", "json"]
+    )
+    payload = json.loads(result.stdout)
+    assert len(payload["skills"]) == 1
+    assert payload["skills"][0]["name"] == "beta"
+
+
+def test_check_changed_nothing_touched_exits_zero(tmp_path: Path) -> None:
+    root = tmp_path / "skills"
+    skill_dir = root / "alpha"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: alpha\ndescription: Use this skill when doing alpha things.\n---\nBody.\n"
+    )
+    _git("init", "-q", cwd=tmp_path)
+    _git("add", "-A", cwd=tmp_path)
+    _git("-c", "user.email=t@t.com", "-c", "user.name=t", "commit", "-q", "-m", "x", cwd=tmp_path)
+
+    result = runner.invoke(app, ["check", str(root), "--changed", "--base-ref", "HEAD"])
+    assert result.exit_code == 0
+    assert "No skills changed" in result.stdout
+
+
+def test_check_changed_without_base_ref_exits_two() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "good-skill"), "--changed"])
+    assert result.exit_code == 2
+
+
+def test_check_changed_rejects_multiple_paths() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            str(EXAMPLES / "good-skill"),
+            str(EXAMPLES / "bad-skill"),
+            "--changed",
+            "--base-ref",
+            "HEAD",
+        ],
+    )
+    assert result.exit_code == 2
+
+
+def test_check_accepts_multiple_explicit_paths() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            str(EXAMPLES / "good-skill" / "SKILL.md"),
+            str(EXAMPLES / "bad-skill" / "SKILL.md"),
+            "--format",
+            "json",
+        ],
+    )
+    payload = json.loads(result.stdout)
+    names = {s["name"] for s in payload["skills"]}
+    assert names == {"good-skill", "helper"}
+
+
+def test_check_multiple_paths_dedupes_by_resolved_path() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            str(EXAMPLES / "good-skill" / "SKILL.md"),
+            str(EXAMPLES / "good-skill" / "SKILL.md"),
+            "--format",
+            "json",
+        ],
+    )
+    payload = json.loads(result.stdout)
+    assert len(payload["skills"]) == 1
+
+
+def test_check_one_bad_path_among_many_exits_two() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            str(EXAMPLES / "good-skill" / "SKILL.md"),
+            str(EXAMPLES / "does-not-exist" / "SKILL.md"),
+        ],
+    )
     assert result.exit_code == 2
 
 

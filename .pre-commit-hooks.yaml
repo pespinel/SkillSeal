@@ -1,7 +1,7 @@
 - id: skillseal
   name: SkillSeal
   description: Lint Agent Skills (SKILL.md) for spec, quality, security, and portability issues.
-  entry: skillseal check .
+  entry: skillseal check
   language: python
   files: SKILL\.md$
-  pass_filenames: false
+  pass_filenames: true

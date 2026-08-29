@@ -18,13 +18,14 @@ import typer
 from rich.console import Console
 
 from skillseal import __version__
+from skillseal.changed import GitDiffError, changed_files, filter_changed_skills
 from skillseal.config import Config, ConfigError, load_config
 from skillseal.conflicts import find_conflicts
 from skillseal.diff import DiffTargetError, diff_skills
 from skillseal.fix import apply_fixes, plan_fixes
 from skillseal.linter import lint_path, lint_skill
 from skillseal.models import Severity
-from skillseal.parser import parse_skill
+from skillseal.parser import discover_skills, parse_skill
 from skillseal.reporters.github import render_check_reports_github
 from skillseal.reporters.json_reporter import (
     check_reports_to_json,
@@ -118,7 +119,10 @@ def _load_config_or_exit(path: Path) -> Config:
 
 @app.command()
 def check(
-    path: PathArg,
+    paths: Annotated[
+        list[Path],
+        typer.Argument(help="One or more SKILL.md files or directories of skills."),
+    ],
     format: Annotated[
         CheckFormat,
         typer.Option(
@@ -140,17 +144,63 @@ def check(
             help="Suppress findings whose id starts with PREFIX. Repeatable.",
         ),
     ] = [],  # noqa: B006 - typer reads this as the option's default, not a mutated shared list
+    changed: Annotated[
+        bool,
+        typer.Option(
+            "--changed",
+            help="Only lint skills with a file that changed between --base-ref and --head-ref.",
+        ),
+    ] = False,
+    base_ref: Annotated[
+        str | None,
+        typer.Option("--base-ref", help="Git ref to diff against. Required with --changed."),
+    ] = None,
+    head_ref: Annotated[str, typer.Option("--head-ref", help="Git ref to diff to.")] = "HEAD",
 ) -> None:
-    """Lint SKILL.md files: specification, quality, security, and portability."""
-    if not path.exists():
-        err_console.print(f"[red]Error:[/red] path not found: {path}")
+    """Lint SKILL.md files: specification, quality, security, and portability.
+
+    Multiple paths dedupe by resolved SKILL.md location, and share config
+    discovered from the first path — the pre-commit case (many explicit
+    changed files, one repo, one skillseal.toml).
+    """
+    for p in paths:
+        if not p.exists():
+            err_console.print(f"[red]Error:[/red] path not found: {p}")
+            raise typer.Exit(code=2)
+    if changed and base_ref is None:
+        err_console.print("[red]Error:[/red] --changed requires --base-ref")
+        raise typer.Exit(code=2)
+    if changed and len(paths) != 1:
+        err_console.print("[red]Error:[/red] --changed takes exactly one path")
         raise typer.Exit(code=2)
 
-    config = _load_config_or_exit(path)
-    reports = lint_path(path, config, ignore_prefixes=ignore)
-    if not reports:
-        err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {path}")
-        raise typer.Exit(code=2)
+    config = _load_config_or_exit(paths[0])
+
+    if changed:
+        assert base_ref is not None  # guarded above
+        try:
+            diff_files = changed_files(paths[0], base_ref, head_ref)
+        except GitDiffError as exc:
+            err_console.print(f"[red]Error:[/red] {exc}")
+            raise typer.Exit(code=2) from exc
+        skill_paths = filter_changed_skills(discover_skills(paths[0]), diff_files)
+        reports = [lint_skill(parse_skill(p), config, ignore) for p in skill_paths]
+        if not reports:
+            console.print("No skills changed.")
+            raise typer.Exit(code=0)
+    else:
+        seen: set[Path] = set()
+        reports = []
+        for p in paths:
+            for report in lint_path(p, config, ignore_prefixes=ignore):
+                resolved = report.skill.path.resolve()
+                if resolved not in seen:
+                    seen.add(resolved)
+                    reports.append(report)
+        if not reports:
+            joined = ", ".join(str(p) for p in paths)
+            err_console.print(f"[red]Error:[/red] no SKILL.md files found under: {joined}")
+            raise typer.Exit(code=2)
 
     if format is CheckFormat.JSON:
         print(json.dumps(check_reports_to_json(reports), indent=2))

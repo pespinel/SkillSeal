@@ -26,10 +26,14 @@ template: `description-too-vague`, `description-missing-when-to-use`,
 it looks unfinished, so `check` doesn't score it like a broken production
 skill. `check` surfaces this as an INFO `detected-as-template` finding.
 
-## `skillseal check <path>`
+## `skillseal check <path>...`
 
 Runs every rule (SPECIFICATION, QUALITY, SECURITY, PORTABILITY) against each
-discovered skill and prints a per-skill report with a 0-100 score.
+discovered skill and prints a per-skill report with a 0-100 score. Takes one
+or more paths — files or directories, deduped by resolved `SKILL.md`
+location — so `skillseal check a/SKILL.md b/SKILL.md` and `skillseal check .`
+both work. Config (`skillseal.toml`) is discovered from the *first* path
+given.
 
 | Flag | Default | Meaning |
 |---|---|---|
@@ -37,6 +41,20 @@ discovered skill and prints a per-skill report with a 0-100 score.
 | `--fail-on warning\|error` | `error` | Minimum finding severity that fails the gate. |
 | `--min-score <int>` | none | Fail the gate if any skill's score is below this. |
 | `--ignore PREFIX` | none | Suppress findings whose id starts with `PREFIX`. Repeatable. |
+| `--changed` | off | Only lint skills with a file that changed between `--base-ref` and `--head-ref`. Takes exactly one path (the search root), not several. |
+| `--base-ref <ref>` | none | Git ref to diff against. Required with `--changed`. |
+| `--head-ref <ref>` | `HEAD` | Git ref to diff to. |
+
+`--changed` scopes discovery to skills whose *directory* contains a changed
+file — not just a changed `SKILL.md` itself, since a change to a bundled
+`scripts/`/`references`/`assets` file matters too (security/portability
+rules scan those). Exits `0` with "No skills changed" when the diff touches
+no skill, distinct from the usage-error exit `2` for "no `SKILL.md` found at
+all":
+
+```bash
+skillseal check ./skills --changed --base-ref origin/main
+```
 
 ## `skillseal test <path>`
 
