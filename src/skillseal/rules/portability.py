@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 
+from skillseal.compatibility_facts import ALLOWED_TOOLS_EXPERIMENTAL, DESCRIPTION_BLOCK_SCALAR
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import (
@@ -20,6 +21,8 @@ from skillseal.rules.base import (
     frontmatter_key_line,
     offset_to_line,
 )
+
+_BLOCK_SCALAR_DESCRIPTION_RE = re.compile(r"^description:[ \t]*[|>][+\-]?\d*[ \t]*$", re.MULTILINE)
 
 _TOOL_KEYWORDS = [
     "npm",
@@ -151,6 +154,32 @@ def _os_mention(skill: Skill, config: Config) -> list[Draft]:
     ]
 
 
+def _description_block_scalar(skill: Skill, config: Config) -> list[Draft]:
+    m = _BLOCK_SCALAR_DESCRIPTION_RE.search(skill.frontmatter_text)
+    if m is None:
+        return []
+    return [
+        Draft(
+            message="'description' uses YAML block-scalar style ('|' or '>').",
+            detail=f"{DESCRIPTION_BLOCK_SCALAR.claim} ({DESCRIPTION_BLOCK_SCALAR.source})",
+            severity=Severity.WARNING,
+            line=frontmatter_key_line(skill, "description"),
+        )
+    ]
+
+
+def _allowed_tools_experimental(skill: Skill, config: Config) -> list[Draft]:
+    if "allowed-tools" not in skill.frontmatter:
+        return []
+    return [
+        Draft(
+            message="'allowed-tools' is a Claude Code-specific, experimental field.",
+            detail=f"{ALLOWED_TOOLS_EXPERIMENTAL.claim} ({ALLOWED_TOOLS_EXPERIMENTAL.source})",
+            line=frontmatter_key_line(skill, "allowed-tools"),
+        )
+    ]
+
+
 RULES: list[Rule] = [
     FuncRule(
         id="declared-compatibility",
@@ -193,5 +222,19 @@ RULES: list[Rule] = [
         severity=Severity.INFO,
         description="Notes bare OS-name mentions, unless already covered by 'compatibility:'.",
         fn=_os_mention,
+    ),
+    FuncRule(
+        id="description-block-scalar",
+        category=Category.PORTABILITY,
+        severity=Severity.WARNING,
+        description="Flags a block-scalar 'description' — breaks skill discovery on Claude Code.",
+        fn=_description_block_scalar,
+    ),
+    FuncRule(
+        id="allowed-tools-experimental",
+        category=Category.PORTABILITY,
+        severity=Severity.INFO,
+        description="Notes that 'allowed-tools' is an experimental, agent-specific field.",
+        fn=_allowed_tools_experimental,
     ),
 ]

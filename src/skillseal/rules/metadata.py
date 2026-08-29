@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from skillseal.compatibility_facts import NAME_DIRECTORY_MISMATCH, NON_SPEC_KEYS
 from skillseal.config import Config
 from skillseal.models import Category, Severity, Skill
 from skillseal.rules.base import Draft, FuncRule, Rule, frontmatter_key_line
@@ -155,7 +156,8 @@ def _name_matches_directory(skill: Skill, config: Config) -> list[Draft]:
     return [
         Draft(
             message="Frontmatter 'name' does not match the skill's directory name.",
-            detail=f"name: {skill.name!r}, directory: {skill.dir_name!r}",
+            detail=f"name: {skill.name!r}, directory: {skill.dir_name!r}. "
+            f"{NAME_DIRECTORY_MISMATCH.claim} ({NAME_DIRECTORY_MISMATCH.source})",
             line=frontmatter_key_line(skill, "name"),
         )
     ]
@@ -240,7 +242,7 @@ def _unknown_frontmatter_keys(skill: Skill, config: Config) -> list[Draft]:
     return [
         Draft(
             message="Frontmatter has unrecognized keys.",
-            detail=", ".join(unknown),
+            detail=f"{', '.join(unknown)}. {NON_SPEC_KEYS.claim} ({NON_SPEC_KEYS.source})",
             line=frontmatter_key_line(skill, unknown[0]),
         )
     ]

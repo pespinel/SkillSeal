@@ -21,6 +21,45 @@ def test_requires_tools_is_informational(make_skill) -> None:
     assert "git" in (findings[0].detail or "")
 
 
+def test_description_block_scalar_flagged(make_skill) -> None:
+    # Claude Code renders 'description: |' as a bare '|' — anthropics/claude-code#10589
+    skill = make_skill(
+        frontmatter={"name": "my-skill", "description": "|\n  Use this skill when doing things."}
+    )
+    assert "description-block-scalar" in _run(skill)
+
+
+def test_plain_scalar_description_not_flagged(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={"name": "my-skill", "description": "Use this skill when doing things."}
+    )
+    assert "description-block-scalar" not in _run(skill)
+
+
+def test_allowed_tools_flagged_as_experimental(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this skill when doing things.",
+            "allowed-tools": "Read Bash(git:*)",
+        }
+    )
+    findings = [
+        f
+        for rule in portability.RULES
+        for f in rule.check(skill)
+        if f.id == "allowed-tools-experimental"
+    ]
+    assert len(findings) == 1
+    assert findings[0].severity.value == "INFO"
+    assert "agentskills.io/specification" in (findings[0].detail or "")
+
+
+def test_no_allowed_tools_not_flagged(make_skill) -> None:
+    skill = make_skill()
+    assert "allowed-tools-experimental" not in _run(skill)
+
+
 def test_requires_network_verb(make_skill) -> None:
     skill = make_skill(body="This skill needs internet access to fetch remote data.\n")
     assert "requires-network" in _run(skill)
