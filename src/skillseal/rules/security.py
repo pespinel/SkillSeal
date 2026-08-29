@@ -359,10 +359,18 @@ def _exfiltration_shape(skill: Skill, config: Config) -> list[Draft]:
     ]
 
 
+_TOOL_GRANT_SPLIT_RE = re.compile(r"[,\s]+")
+
+
 def _tool_grant_tokens(skill: Skill) -> list[str]:
     raw = skill.frontmatter.get("allowed-tools")
     if isinstance(raw, str):
-        return raw.split()
+        # code.claude.com/docs/en/skills: 'allowed-tools' "accepts a space- or
+        # comma-separated string" — a plain .split() left a trailing comma
+        # glued to the previous token (e.g. "Bash(*)," from "Bash(*), Read"),
+        # which silently missed a real unrestricted grant in a real corpus
+        # where every observed skill used comma-separated syntax.
+        return [t for t in _TOOL_GRANT_SPLIT_RE.split(raw.strip()) if t]
     if isinstance(raw, list):
         return [str(item) for item in raw]
     return []

@@ -323,6 +323,21 @@ def test_broad_tool_grant_scoped_not_flagged(make_skill) -> None:
     assert "broad-tool-grant" not in _run(skill)
 
 
+def test_broad_tool_grant_comma_separated(make_skill) -> None:
+    # code.claude.com/docs/en/skills documents comma-separated as valid, and
+    # a real corpus (100% of skills using allowed-tools) writes it this way —
+    # a naive whitespace-only split left "Bash(*)," glued together, missing
+    # a real unrestricted grant whenever it wasn't the last item in the list
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "allowed-tools": "Bash(*), Read",
+        }
+    )
+    assert "broad-tool-grant" in _run(skill)
+
+
 def test_broad_tool_grant_also_scans_malformed_list(make_skill) -> None:
     skill = make_skill(
         frontmatter={
