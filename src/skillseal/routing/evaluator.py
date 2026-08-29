@@ -13,6 +13,8 @@ from typing import Protocol
 from skillseal.models import RoutingResult, Skill
 
 _WORD_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9_-]*")
+# See HeuristicRoutingEvaluator's docstring (#15a) for why this exists.
+_MIN_RECALL_DENOMINATOR = 4
 _STOPWORDS = {
     "a",
     "an",
@@ -136,6 +138,26 @@ def _keyword_terms(skill: Skill) -> set[str]:
     return terms
 
 
+def _keyword_phrase_hit(skill: Skill, prompt_terms: set[str]) -> bool:
+    """A *multi-word* declared keyword fully present in the prompt force-triggers.
+
+    A single-word keyword used to short-circuit on its own — one common word
+    in the list (e.g. "python") made should_not_trigger unsatisfiable for
+    that skill (#15b). Requiring the whole multi-word phrase to match keeps
+    the "explicit author signal" intent while ruling that out; a single-word
+    keyword still counts toward ordinary recall via skill_terms(), it just
+    can't short-circuit alone.
+    """
+    raw_keywords = skill.frontmatter.get("keywords")
+    if not isinstance(raw_keywords, list):
+        return False
+    for kw in raw_keywords:
+        kw_terms = _terms(str(kw))
+        if len(kw_terms) >= 2 and kw_terms <= prompt_terms:
+            return True
+    return False
+
+
 def skill_terms(skill: Skill) -> set[str]:
     """A skill's distinctive vocabulary: name + description + declared `keywords:`.
 
@@ -158,15 +180,21 @@ class HeuristicRoutingEvaluator:
     Recall is computed against the prompt's term count, not the description's:
     a short prompt against a long, thorough description should still be able
     to match cleanly, rather than being structurally penalized by the
-    description's length. A hit on any declared `keywords:` term also
-    triggers directly, since those are an explicit author signal.
+    description's length. The denominator is floored at 4 terms so a single
+    shared word can't reach 1.0 recall on its own — a one-word prompt like
+    "audit" used to trigger any skill mentioning "audit" with full confidence,
+    turning every short should_not_trigger case sharing that stem into an
+    automatic false positive (#15a; floor chosen from a corpus measurement,
+    see #28 — the alternative of blending in skill-precision/F1 was tried and
+    collapsed true-positive recall to single digits). A hit on a full
+    multi-word `keywords:` phrase also triggers directly, since that's an
+    explicit author signal (#15b).
     """
 
     threshold: float = 0.3
 
     def evaluate(self, skill: Skill, prompt: str) -> RoutingResult:
         prompt_terms = _terms(prompt)
-        keyword_terms = _keyword_terms(skill)
         reference_terms = skill_terms(skill)
         if not reference_terms or not prompt_terms:
             return RoutingResult(
@@ -176,12 +204,15 @@ class HeuristicRoutingEvaluator:
             )
 
         overlap = reference_terms & prompt_terms
-        recall = len(overlap) / len(prompt_terms)
-        keyword_hit = bool(keyword_terms & prompt_terms)
+        recall = len(overlap) / max(len(prompt_terms), _MIN_RECALL_DENOMINATOR)
+        keyword_hit = _keyword_phrase_hit(skill, prompt_terms)
         triggered = recall >= self.threshold or keyword_hit
 
         if triggered:
-            matched = sorted(overlap) or sorted(keyword_terms & prompt_terms)
+            # overlap is always non-empty here: recall > 0 implies it directly,
+            # and a keyword-phrase hit's terms are already folded into
+            # reference_terms via skill_terms(), so they land in overlap too.
+            matched = sorted(overlap)
             reason = f"Matched terms: {', '.join(matched[:6])}"
         elif recall == 0:
             reason = "No meaningful overlap between prompt and skill description."
