@@ -41,6 +41,7 @@ from skillseal.reporters.terminal import (
     render_routing_summaries,
     render_rule_explain,
     render_rules,
+    render_score_explain,
     render_skill_diff,
 )
 from skillseal.routing.evaluator import (
@@ -156,6 +157,13 @@ def check(
         typer.Option("--base-ref", help="Git ref to diff against. Required with --changed."),
     ] = None,
     head_ref: Annotated[str, typer.Option("--head-ref", help="Git ref to diff to.")] = "HEAD",
+    explain_score: Annotated[
+        bool,
+        typer.Option(
+            "--explain-score",
+            help="Show the point breakdown behind each category score (terminal format only).",
+        ),
+    ] = False,
 ) -> None:
     """Lint SKILL.md files: specification, quality, security, and portability.
 
@@ -210,6 +218,9 @@ def check(
         print(json.dumps(check_reports_to_sarif(reports), indent=2))
     else:
         render_check_reports(reports, console)
+        if explain_score:
+            for report in reports:
+                render_score_explain(report, console)
 
     gate_severities = _FAIL_ON_SEVERITIES[fail_on]
     gate_failed = any(f.severity in gate_severities for r in reports for f in r.findings)

@@ -38,7 +38,7 @@ _VAGUE_PHRASES = [
     "helps you with various tasks",
 ]
 
-_WHEN_CUE_RE = re.compile(
+WHEN_CUE_RE = re.compile(
     r"\b(when|whenever|if you|for (use )?when|use (this|it) (for|when|to)|before|after)\b",
     re.IGNORECASE,
 )
@@ -147,7 +147,7 @@ def _vague_description(skill: Skill, config: Config) -> list[Draft]:
 def _description_lacks_when_to_use(skill: Skill, config: Config) -> list[Draft]:
     if not skill.description:
         return []
-    if _WHEN_CUE_RE.search(skill.description):
+    if WHEN_CUE_RE.search(skill.description):
         return []
     return [
         Draft(

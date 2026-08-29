@@ -6,6 +6,7 @@ from pathlib import Path
 
 from rich.console import Console
 
+from skillseal.explain_score import category_breakdown, description_signals
 from skillseal.models import (
     Category,
     ConflictReport,
@@ -63,6 +64,28 @@ def _render_skill_report(report: SkillReport, console: Console, root: Path | Non
     console.print(f"[bold]SkillSeal Score: {report.score}/100[/bold]\n")
     for category in Category:
         console.print(f"{category.value.capitalize():<15}{report.category_scores[category]:>3}")
+
+
+def render_score_explain(report: SkillReport, console: Console) -> None:
+    console.print("\n[bold]Score breakdown[/bold]\n")
+    for category in Category:
+        breakdown = category_breakdown(report, category)
+        console.print(f"[bold]{category.value.capitalize()}[/bold]  {breakdown.score}/100")
+        if not breakdown.costs:
+            console.print("  [dim]no findings[/dim]")
+        else:
+            for cost in breakdown.costs:
+                sign = f"-{cost.points}" if cost.points else "  0"
+                console.print(f"  {sign:>4}  {cost.finding.id}")
+        if category is Category.QUALITY:
+            sig = description_signals(report.skill.description)
+            cue = "yes" if sig.has_when_cue else "no"
+            pct = f"p{sig.percentile}" if sig.percentile else "<p5"
+            console.print(
+                f"  [dim]description: {sig.word_count} words ({pct} of a 1,142-skill "
+                f"corpus), when-cue: {cue}[/dim]"
+            )
+        console.print()
 
 
 def render_routing_summaries(

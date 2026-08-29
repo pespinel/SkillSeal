@@ -20,6 +20,13 @@ def test_check_bad_skill_exits_one_on_error_gate() -> None:
     assert result.exit_code == 1
 
 
+def test_check_explain_score_shows_breakdown() -> None:
+    result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--explain-score"])
+    assert "Score breakdown" in result.output
+    assert "description-too-vague" in result.output
+    assert "when-cue" in result.output
+
+
 def test_check_bad_skill_passes_lower_gate_ignored() -> None:
     # --fail-on warning is stricter than error, bad-skill has warnings too either way
     result = runner.invoke(app, ["check", str(EXAMPLES / "bad-skill"), "--fail-on", "warning"])

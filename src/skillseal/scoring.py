@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from skillseal.models import Category, Finding, Severity, Skill, SkillReport
 
-_DEDUCTIONS: dict[Severity, int] = {
+DEDUCTIONS: dict[Severity, int] = {
     Severity.ERROR: 25,
     Severity.WARNING: 10,
     Severity.INFO: 0,
@@ -61,7 +61,7 @@ def category_status(findings: list[Finding]) -> str:
 
 
 def score_category(findings: list[Finding]) -> int:
-    total = 100 - sum(_DEDUCTIONS[f.severity] for f in findings)
+    total = 100 - sum(DEDUCTIONS[f.severity] for f in findings)
     return max(0, min(100, total))
 
 

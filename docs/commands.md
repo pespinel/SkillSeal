@@ -44,6 +44,18 @@ given.
 | `--changed` | off | Only lint skills with a file that changed between `--base-ref` and `--head-ref`. Takes exactly one path (the search root), not several. |
 | `--base-ref <ref>` | none | Git ref to diff against. Required with `--changed`. |
 | `--head-ref <ref>` | `HEAD` | Git ref to diff to. |
+| `--explain-score` | off | Print the point breakdown behind each category score (terminal format only). |
+
+`--explain-score` shows exactly why a skill scored what it did: each
+category's findings with their point deduction, plus — for QUALITY
+specifically — the description's raw signals (word count, percentile against
+a real 1,142-skill corpus, and whether a "when to use" cue was found), even
+when nothing fired. The percentile is descriptive context, not a scoring
+input; it never changes the score itself.
+
+```bash
+skillseal check ./skills/my-skill --explain-score
+```
 
 `--changed` scopes discovery to skills whose *directory* contains a changed
 file — not just a changed `SKILL.md` itself, since a change to a bundled
