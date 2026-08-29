@@ -964,7 +964,7 @@ wheels = [
 
 [[package]]
 name = "skillseal"
-version = "0.26.1"
+version = "0.26.2"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
