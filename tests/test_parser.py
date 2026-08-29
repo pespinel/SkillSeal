@@ -90,6 +90,45 @@ def test_discover_skills_recursive(tmp_path: Path) -> None:
     assert found == sorted(found)
 
 
+def test_discover_skills_finds_skills_under_dot_claude(tmp_path: Path) -> None:
+    # .claude/skills/<name>/SKILL.md is Claude Code's own canonical location
+    # for personal/project skills — blanket-skipping every dotdir used to
+    # make every skill there invisible to `check` (found via a real-world
+    # scan: "no SKILL.md files found" against a repo that had one there)
+    skill_dir = tmp_path / ".claude" / "skills" / "my-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(GOOD_SKILL)
+
+    found = discover_skills(tmp_path)
+
+    assert found == [skill_dir / "SKILL.md"]
+
+
+def test_discover_skills_finds_skills_under_dot_github(tmp_path: Path) -> None:
+    # .github/plugins/.../skills/ is a real convention too (seen in a real
+    # microsoft/azure-skills scan)
+    skill_dir = tmp_path / ".github" / "plugins" / "my-plugin" / "skills" / "my-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(GOOD_SKILL)
+
+    found = discover_skills(tmp_path)
+
+    assert found == [skill_dir / "SKILL.md"]
+
+
+def test_discover_skills_still_skips_vcs_and_cache_dirs(tmp_path: Path) -> None:
+    (tmp_path / "real").mkdir()
+    (tmp_path / "real" / "SKILL.md").write_text(GOOD_SKILL)
+    for skip_dir in (".git", ".venv", "node_modules", "__pycache__", ".tox", ".mypy_cache"):
+        d = tmp_path / skip_dir / "not-a-skill"
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text(GOOD_SKILL)
+
+    found = discover_skills(tmp_path)
+
+    assert found == [tmp_path / "real" / "SKILL.md"]
+
+
 def test_discover_skills_direct_file(tmp_path: Path) -> None:
     skill_file = tmp_path / "SKILL.md"
     skill_file.write_text(GOOD_SKILL)

@@ -9,7 +9,16 @@ import yaml
 
 from skillseal.models import Skill
 
-_SKIP_DIRS = {".git", ".venv", "node_modules", "__pycache__"}
+_SKIP_DIRS = {
+    ".git",
+    ".venv",
+    "node_modules",
+    "__pycache__",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+}
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*\r?\n?", re.DOTALL)
 
 
@@ -28,7 +37,14 @@ def discover_skills(path: Path) -> list[Path]:
     found: list[Path] = []
     for candidate in path.rglob("SKILL.md"):
         rel_parts = candidate.relative_to(path).parts[:-1]
-        if any(part in _SKIP_DIRS or part.startswith(".") for part in rel_parts):
+        # Only VCS/build/cache artifact dirs are skipped — NOT every dotdir.
+        # `.claude/skills/` is Claude Code's own canonical location for
+        # personal and project skills; blanket-skipping any `part.startswith
+        # (".")` used to make every skill living there permanently invisible
+        # to `check` (verified: a skill at .claude/skills/x/SKILL.md reported
+        # "no SKILL.md files found"). `.github/plugins/.../skills/` is a real
+        # convention too (seen in a real microsoft/azure-skills scan).
+        if any(part in _SKIP_DIRS for part in rel_parts):
             continue
         found.append(candidate)
     found.sort(key=lambda p: len(p.parts))
