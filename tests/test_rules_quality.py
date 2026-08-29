@@ -36,6 +36,30 @@ def test_repeated_instruction_lines(make_skill) -> None:
     assert _find(skill, "repeated-instructions").line == 5
 
 
+def test_repeated_code_lines_not_flagged(make_skill) -> None:
+    # a repeated import/line across two examples isn't a repeated
+    # *instruction* — 58% of this rule's real-world firings were exactly
+    # this on a 1,142-skill corpus (#28)
+    body = (
+        "```python\nimport polars as pl\nprint('one')\n```\n\n"
+        "```python\nimport polars as pl\nprint('two')\n```\n"
+    )
+    skill = make_skill(body=body)
+    assert "repeated-instructions" not in _run(skill)
+
+
+def test_repeated_table_rows_not_flagged(make_skill) -> None:
+    # a repeated markdown table separator/header is structure, not a
+    # duplicated instruction — 8.4% of real-world firings (#28)
+    body = (
+        "| Format | Skill | Capabilities |\n|---|---|---|\n| a | b | c |\n\n"
+        "Some text in between.\n\n"
+        "| Format | Skill | Capabilities |\n|---|---|---|\n| d | e | f |\n"
+    )
+    skill = make_skill(body=body)
+    assert "repeated-instructions" not in _run(skill)
+
+
 def test_long_section(make_skill) -> None:
     body = "## Section\n\n" + ("word " * 900)
     skill = make_skill(body=body)

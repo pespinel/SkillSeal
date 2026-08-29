@@ -329,7 +329,17 @@ def _long_base64_blob(skill: Skill, config: Config) -> list[Draft]:
 
 
 def _exfiltration_shape(skill: Skill, config: Config) -> list[Draft]:
-    reach_lines = {offset_to_line(skill, m.start()) for m in _EXFIL_REACH_RE.finditer(skill.body)}
+    # Only the *reach* (the actual network action) needs to be in code —
+    # that's the actionable part. The secret reference is left whole-body:
+    # prose legitimately points an agent at a secret ("read the key at
+    # ~/.ssh/id_rsa") right before a code block does the reaching. Requiring
+    # code for reach alone still catches that, but no longer catches hygiene
+    # *advice* like "never hardcode the key, use env vars, fetch it securely"
+    # — both sides of that sentence are prose, not a real network call (74%
+    # of hits on a 1,142-skill corpus, see #28).
+    reach_lines = {
+        offset_to_line(skill, offset) for _, offset in _matches_in_code(skill, _EXFIL_REACH_RE)
+    }
     secret_lines = {offset_to_line(skill, m.start()) for m in _EXFIL_SECRET_RE.finditer(skill.body)}
     hits = [
         (r, s) for r in reach_lines for s in secret_lines if abs(r - s) <= _EXFIL_PROXIMITY_LINES
@@ -513,7 +523,12 @@ RULES: list[Rule] = [
     FuncRule(
         id="exfiltration-shape",
         category=Category.SECURITY,
-        severity=Severity.ERROR,
+        # Downgraded from ERROR after a 1,142-skill corpus measurement (#28):
+        # even restricted to code, this heuristic can't tell "send your own
+        # API key to the service that issued it" (a completely standard auth
+        # example) from real exfiltration to an unrelated destination — that
+        # needs semantic understanding of the URL's trust, not proximity.
+        severity=Severity.WARNING,
         description="Flags a network call co-located with a secret-ish reference.",
         fn=_exfiltration_shape,
     ),

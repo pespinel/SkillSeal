@@ -120,6 +120,17 @@ def extract_code_spans(text: str) -> list[tuple[str, int]]:
     return spans
 
 
+def code_block_ranges(text: str) -> list[tuple[int, int]]:
+    """(start, end) character offsets covered by fenced or indented code blocks.
+
+    For rules that scan prose line-by-line and need to skip code (e.g. a
+    repeated `import polars as pl` isn't a repeated *instruction*).
+    """
+    ranges = [(m.start(), m.end()) for m in _FENCED_CODE_RE.finditer(text)]
+    ranges.extend((m.start(), m.end()) for m in _INDENTED_CODE_RE.finditer(text))
+    return ranges
+
+
 def split_sections(body: str) -> list[tuple[str, str, int]]:
     """Split into (heading, section_text, heading_offset) on level 2-6 headings."""
     headings = list(_HEADING_RE.finditer(body))

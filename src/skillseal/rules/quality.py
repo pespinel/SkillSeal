@@ -12,6 +12,7 @@ from skillseal.rules.base import (
     Draft,
     FuncRule,
     Rule,
+    code_block_ranges,
     estimate_tokens,
     frontmatter_key_line,
     local_file_targets,
@@ -70,12 +71,21 @@ def _too_many_lines(skill: Skill, config: Config) -> list[Draft]:
 
 
 def _repeated_instruction_lines(skill: Skill, config: Config) -> list[Draft]:
+    # A repeated line of *code* (e.g. "import polars as pl" in two examples)
+    # isn't a repeated instruction — measured on a 1,142-skill corpus, 58% of
+    # this rule's firings were exactly that (see #28).
+    code_ranges = code_block_ranges(skill.body)
     counts: Counter[str] = Counter()
     first_offset: dict[str, int] = {}
     offset = 0
     for raw_line in skill.body.splitlines(keepends=True):
+        in_code = any(start <= offset < end for start, end in code_ranges)
         stripped = raw_line.strip()
-        if len(stripped) >= _MIN_REPEATED_LINE_LEN and not stripped.startswith("#"):
+        # A repeated table header/separator row ("| Format | Skill |...") is
+        # structure, not a duplicated instruction — 8.4% of firings on the
+        # same corpus (#28).
+        is_structural = stripped.startswith("#") or stripped.startswith("|")
+        if not in_code and len(stripped) >= _MIN_REPEATED_LINE_LEN and not is_structural:
             counts[stripped] += 1
             first_offset.setdefault(stripped, offset)
         offset += len(raw_line)
