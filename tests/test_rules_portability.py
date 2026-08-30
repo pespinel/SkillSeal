@@ -21,6 +21,60 @@ def test_requires_tools_is_informational(make_skill) -> None:
     assert "git" in (findings[0].detail or "")
 
 
+def test_node_as_figma_node_not_flagged(make_skill) -> None:
+    # "node" collides with the common Figma/DOM/graph-tree noun — found via a
+    # real corpus where 7/16 "Requires: node" hits were pure Figma-node
+    # mentions with zero relation to Node.js
+    skill = make_skill(body="Read the node id from the registry's Figma node column.\n")
+    assert "requires-tools" not in _run(skill)
+
+
+def test_node_id_url_param_in_code_span_not_flagged(make_skill) -> None:
+    # a Figma URL example (`?node-id=<id>`) can itself live inside a code
+    # span — restricting to code spans alone doesn't exclude this one, the
+    # word-boundary match needs its own "node-id"/"node id" exclusion
+    skill = make_skill(body="```\nhttps://figma.com/design/<key>?node-id=<id>\n```\n")
+    assert "requires-tools" not in _run(skill)
+
+
+def test_bare_figma_node_in_inline_code_not_flagged(make_skill) -> None:
+    # a literal column-name reference like `Figma node` can be written in
+    # inline code too, not just fenced blocks
+    skill = make_skill(body="Read the `Figma node` column from the registry.\n")
+    assert "requires-tools" not in _run(skill)
+
+
+def test_node_command_in_fenced_code_flagged(make_skill) -> None:
+    skill = make_skill(body="Run it:\n\n```bash\nnode script.mjs --check\n```\n")
+    findings = [
+        f for rule in portability.RULES for f in rule.check(skill) if f.id == "requires-tools"
+    ]
+    assert len(findings) == 1
+    assert "node" in (findings[0].detail or "")
+
+
+def test_node_command_in_indented_fenced_code_flagged(make_skill) -> None:
+    # a fence nested inside a numbered list step is indented past column 0 —
+    # found via the same real corpus (22/42 skills use this pattern)
+    skill = make_skill(body="1. Run it:\n\n   ```bash\n   node script.mjs --check\n   ```\n")
+    assert "requires-tools" in _run(skill)
+
+
+def test_node_in_compatibility_field_flagged(make_skill) -> None:
+    skill = make_skill(
+        frontmatter={
+            "name": "my-skill",
+            "description": "Use this when doing things.",
+            "compatibility": "Requires node and npm",
+        }
+    )
+    findings = [
+        f for rule in portability.RULES for f in rule.check(skill) if f.id == "requires-tools"
+    ]
+    assert len(findings) == 1
+    assert "node" in (findings[0].detail or "")
+
+
 def test_description_block_scalar_flagged(make_skill) -> None:
     # Claude Code renders 'description: |' as a bare '|' — anthropics/claude-code#10589
     skill = make_skill(

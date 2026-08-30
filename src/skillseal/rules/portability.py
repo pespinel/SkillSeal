@@ -47,6 +47,21 @@ _TOOL_KEYWORDS = [
 _TOOL_PATTERNS = {
     tool: re.compile(rf"\b{re.escape(tool)}\b", re.IGNORECASE) for tool in _TOOL_KEYWORDS
 }
+# 'node' collides with a very common non-tool noun — a Figma/DOM/graph/tree
+# "node" — in prose and even inside code spans (found via a real corpus:
+# 7/16 "Requires: node" hits had zero relation to Node.js). This excludes the
+# two most common shapes: "Figma node" as a bare noun, and "node-id"/
+# "node id"/"Node ID" (a URL query param / column name) — both explicitly,
+# not just via a code-span restriction, since a Figma URL example or a
+# `Figma node` column reference can itself live inside a code span. Not
+# exhaustive: rarer phrasings ("MCP error or node not found", "2 nodes")
+# still slip through INFO-severity noise this rule already accepts (this is
+# a 0-point signal — see scoring.py) rather than chasing every one.
+_TOOL_PATTERNS["node"] = re.compile(r"(?<!figma )\bnode\b(?!-id\b)(?!\s+id\b)", re.IGNORECASE)
+# Every genuine `node script.mjs` invocation in that same corpus was inside a
+# code span, so 'node' is only counted there (plus description/compatibility,
+# which are short, deliberate declarations, not free-flowing prose).
+_AMBIGUOUS_IN_PROSE = {"node"}
 
 _NETWORK_VERB_RE = re.compile(
     r"(\bnetwork\b|\binternet\b|\bapi (call|request)\b|\bdownloads?\b)", re.IGNORECASE
@@ -81,7 +96,16 @@ def _declared_compatibility(skill: Skill, config: Config) -> list[Draft]:
 
 def _requires_tools(skill: Skill, config: Config) -> list[Draft]:
     text = _text(skill)
-    found = [tool for tool, pattern in _TOOL_PATTERNS.items() if pattern.search(text)]
+    compatibility = skill.frontmatter.get("compatibility")
+    compatibility_text = compatibility if isinstance(compatibility, str) else ""
+    code_text = "\n".join(span for span, _offset in extract_code_spans(skill.body))
+    declared_text = f"{skill.description}\n{compatibility_text}\n{code_text}"
+
+    found = []
+    for tool, pattern in _TOOL_PATTERNS.items():
+        haystack = declared_text if tool in _AMBIGUOUS_IN_PROSE else text
+        if pattern.search(haystack):
+            found.append(tool)
     if not found:
         return []
     return [

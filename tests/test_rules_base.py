@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from skillseal.models import Skill
-from skillseal.rules.base import frontmatter_key_line, offset_to_line
+from skillseal.rules.base import extract_code_spans, frontmatter_key_line, offset_to_line
 
 
 def _bare_skill(raw_text: str) -> Skill:
@@ -46,3 +46,19 @@ def test_frontmatter_key_line_falls_back_when_key_absent(make_skill) -> None:
 def test_frontmatter_key_line_falls_back_with_no_frontmatter_text() -> None:
     skill = _bare_skill("no frontmatter here\n")
     assert frontmatter_key_line(skill, "name") == 1
+
+
+def test_extract_code_spans_finds_fence_at_column_zero() -> None:
+    text = "text\n\n```bash\necho hi\n```\n\nmore\n"
+    spans = extract_code_spans(text)
+    assert ("echo hi", text.index("echo hi")) in spans
+
+
+def test_extract_code_spans_finds_fence_nested_in_a_list_item() -> None:
+    # a fence inside a numbered/bulleted step is indented by the list's own
+    # content column, not column 0 — found via a real corpus where 22/42
+    # skills used this pattern and every command inside was silently treated
+    # as prose (#28-adjacent)
+    text = "8. Run it:\n\n   ```bash\n   node script.mjs\n   ```\n\n   more.\n"
+    spans = extract_code_spans(text)
+    assert any("node script.mjs" in content for content, _offset in spans)

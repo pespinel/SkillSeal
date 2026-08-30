@@ -102,8 +102,15 @@ HIDDEN_UNICODE_RE = re.compile(r"[​-‏‪-‮﻿]")
 
 # Matches ``` or ~~~ fences (CommonMark treats them as equivalent); the
 # backreference requires the closing fence to be the exact same marker, so a
-# stray odd-length fence can't mis-pair and swallow prose as "code".
-_FENCED_CODE_RE = re.compile(r"^(```+|~~~+)[^\n]*\n(.*?)\n\1[ \t]*$", re.DOTALL | re.MULTILINE)
+# stray odd-length fence can't mis-pair and swallow prose as "code". Leading
+# whitespace is allowed on both fence lines: a fence nested inside a list
+# item (e.g. "8. steps:\n\n   ```bash\n   ...") is indented by the list's own
+# content column, not column 0 — found via a real corpus where 22/42 skills
+# used this pattern and every fenced command inside a numbered step was
+# silently treated as prose by every rule built on extract_code_spans.
+_FENCED_CODE_RE = re.compile(
+    r"^[ \t]*(```+|~~~+)[^\n]*\n(.*?)\n[ \t]*\1[ \t]*$", re.DOTALL | re.MULTILINE
+)
 # 4-space/tab-indented blocks are also CommonMark code blocks.
 _INDENTED_CODE_RE = re.compile(r"(?:^(?:[ ]{4,}|\t).*(?:\n|\Z))+", re.MULTILINE)
 _INLINE_CODE_RE = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
